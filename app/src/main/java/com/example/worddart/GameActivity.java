@@ -18,7 +18,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     String[] Mode;
     String MODE_OFFLINE,MODE_ONLINE,MODE_SOLO,MODE_AI,MODE_TIMED,MODE_ELIMINATION;
     Button btnAdd,btnSub;
-    TextView tvTimer,tvModer;
+    TextView tvTimer,tvMode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
