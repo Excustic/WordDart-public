@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageButton
+        android:id="@+id/ibTimed"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@android:color/transparent"
+        android:padding="40dp"
+        android:scaleType="centerInside"
+        app:srcCompat="@drawable/timed" />
+
+    <TextView
+        android:id="@+id/textTimed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/bubble3d"
+        android:layout_gravity="center_horizontal"
+        android:text="Timed"
+        android:textColor="@color/colorPrimary"
+        android:textSize="36dp" />
+
+    <ImageButton
+        android:id="@+id/ibElimination"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@android:color/transparent"
+        android:padding="40dp"
+        android:scaleType="centerInside"
+        app:srcCompat="@drawable/elimination" />
+
+    <TextView
+        android:id="@+id/textElimination2"
+        android:layout_width="300dp"
+        android:gravity="center_horizontal"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/bubble3d"
+        android:layout_gravity="center_horizontal"
+        android:paddingBottom="40dp"
+        android:text="Elimination"
+        android:textColor="@color/colorPrimary"
+        android:textSize="36dp" />
+
+</LinearLayout>

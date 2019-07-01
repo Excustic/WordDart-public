@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">WordDart</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="server_client_id">699285936511-59gqlbffu6r53l524uf0o671f975f76i.apps.googleusercontent.com</string>
+
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+
+    <!-- Preference Titles -->
+
+    <!-- Messages Preferences -->
+
+    <!-- Sync Preferences -->
+
+    <!-- Preference Titles -->
+
+    <!-- Messages Preferences -->
+
+    <!-- Sync Preferences -->
+
+    <!-- Game const strings-->
+    <string name="OFFLINE_MODE">OFFLINE</string>
+    <string name="ONLINE_MODE">MULTIPLAYER</string>;
+    <string name="GAMEMODE_TIMED">TIMED</string>
+    <string name="GAMEMODE_ELIMINATION">ELIMINATION</string>
+    <string name="OFFLINE_SOLO_MODE">SOLO</string>
+    <string name="OFFLINE_AI_MODE">AI</string>
+
+</resources>
