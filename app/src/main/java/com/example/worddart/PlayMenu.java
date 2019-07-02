@@ -45,24 +45,24 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         case R.id.btn2:
             break;
         case R.id.btn3:
-            Mode[0]=getResources().getResourceName(R.string.OFFLINE_MODE);
-            Mode[1]=getResources().getResourceName(R.string.OFFLINE_SOLO_MODE);
+            Mode[0]=getResources().getString(R.string.OFFLINE_MODE);
+            Mode[1]=getResources().getString(R.string.OFFLINE_SOLO_MODE);
             createDialog();
             break;
         case R.id.btn4:
-            Mode[0]=getResources().getResourceName(R.string.OFFLINE_MODE);
-            Mode[1]=getResources().getResourceName(R.string.OFFLINE_AI_MODE);
+            Mode[0]=getResources().getString(R.string.OFFLINE_MODE);
+            Mode[1]=getResources().getString(R.string.OFFLINE_AI_MODE);
             createDialog();
             break;
         case R.id.ibTimed:
             d.dismiss();
-            Mode[2]=getResources().getResourceName(R.string.GAMEMODE_TIMED);;
+            Mode[2]=getResources().getString(R.string.GAMEMODE_TIMED);;
             intent.putExtra("MODE",Mode);
             startActivity(intent);
             break;
         case R.id.ibElimination:
             d.dismiss();
-            Mode[2]=getResources().getResourceName(R.string.GAMEMODE_ELIMINATION);
+            Mode[2]=getResources().getString(R.string.GAMEMODE_ELIMINATION);
             intent.putExtra("MODE",Mode);
             startActivity(intent);
             break;
