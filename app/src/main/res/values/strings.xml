@@ -39,5 +39,6 @@
     <string name="OFFLINE_AI_MODE">PLAYER VS AI</string>
     <string name="TimerReset">05m 00s</string>
     <string name="StartMessage">Get ready! Clock will start ticking in 5 seconds.</string>
+    <string name="StartScore">Score : 0</string>
 
 </resources>

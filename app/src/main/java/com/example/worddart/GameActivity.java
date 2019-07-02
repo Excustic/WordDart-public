@@ -31,9 +31,9 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     String[] Mode;
     String MODE_OFFLINE,MODE_ONLINE,MODE_SOLO,MODE_AI,MODE_TIMED,MODE_ELIMINATION;
     final long INTERVAL_MILLIS=5*60*1000, MAX_MILLIS=85*60*1000,MIN_MILLIS=INTERVAL_MILLIS;
-    TextView tvTimer,tvMode;
+    TextView tvTimer,tvMode,tvScore;
     Button btnAdd,btnSub,btnStart;
-    Animation fadeOut;
+    Animation fadeOut,fadeIn;
     CountDownTimer timer;
     long timeLeftInMillis;
     Boolean timerIsRun;
@@ -52,6 +52,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         MODE_TIMED = getResources().getResourceName(R.string.GAMEMODE_TIMED);
         MODE_ELIMINATION = getResources().getResourceName(R.string.GAMEMODE_ELIMINATION);
         timeLeftInMillis=0;
+        tvScore=(TextView)findViewById(R.id.tvScore);
         tvTimer=(TextView)findViewById(R.id.tvTimer);
         tvMode=(TextView)findViewById(R.id.TITLE_MODE);
         tvMode.setText(Mode[2]);
@@ -62,6 +63,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         btnSub.setOnClickListener(this);
         btnStart.setOnClickListener(this);
         fadeOut= AnimationUtils.loadAnimation(this,R.anim.fadeout);
+        fadeIn=AnimationUtils.loadAnimation(this,R.anim.fadein);
     }
 
     @Override
@@ -165,10 +167,15 @@ public void updateTimer()
 }
 //Used for delaying the timer, giving the user some time to get ready
     private void startTimer(){
+        final Boolean[] animStart = {false};
         timer=new CountDownTimer(4000,10) {
             @Override
             public void onTick(long l) {
-
+                Log.d(TAG,"millisecs until start:"+l);
+                if(l<1000&&!animStart[0]) {
+                    tvScore.startAnimation(fadeIn);
+                    animStart[0] =true;
+                }
             }
 
             @Override
