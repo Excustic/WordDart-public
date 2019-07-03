@@ -8,6 +8,7 @@ import androidx.dynamicanimation.animation.FlingAnimation;
 import android.app.Instrumentation;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.nfc.Tag;
 import android.os.AsyncTask;
@@ -37,6 +38,9 @@ import com.google.android.material.snackbar.Snackbar;
 import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -44,6 +48,8 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -55,13 +61,13 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     Intent intent;
     String[] Mode;
     String MODE_OFFLINE,MODE_ONLINE,MODE_SOLO,MODE_AI,MODE_TIMED,MODE_ELIMINATION;
-    final long INTERVAL_MILLIS=5*60*1000, MAX_MILLIS=85*60*1000,MIN_MILLIS=INTERVAL_MILLIS;
+    final long INTERVAL_MILLIS=5*60*1000, MAX_MILLIS=85*60*1000,MIN_TIMED_MILLIS=INTERVAL_MILLIS,MAX_ELIM_MILLIS=2*60*1000,MIN_ELIM_MILLIS=10*1000;
     static final String WIKI_API= "https://en.wiktionary.org/w/api.php?action=query&titles=";
     TextView tvTimer,tvMode,tvScore;
     Button btnAdd,btnSub,btnStart;
     Animation fadeOut,fadeIn;
     CountDownTimer timer;
-    long timeLeftInMillis;
+    long timeLeftInMillis,setTimeMillis;
     Boolean timerIsRun;
     static final String JSON_ADDER="&format=json";
     private static AsyncTask<Void, Void, Void> mTask;
@@ -71,6 +77,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     TextWatcher watcher;
     String jsonString;
     String url;
+    HashMap<Character, ArrayList<String>> AIDictionary,usedWords;
 
     public static String getJsonFromServer(String url) throws IOException {
         Log.d(TAG,url);
@@ -100,12 +107,12 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         Mode = intent.getStringArrayExtra("MODE");
         assert Mode != null;
         Log.d(TAG, "Mode: " + Mode[0] + "_" + Mode[1] + "_" + Mode[2]);
-        MODE_OFFLINE = getResources().getResourceName(R.string.OFFLINE_MODE);
-        MODE_ONLINE = getResources().getResourceName(R.string.ONLINE_MODE);
-        MODE_SOLO = getResources().getResourceName(R.string.OFFLINE_SOLO_MODE);
-        MODE_AI = getResources().getResourceName(R.string.OFFLINE_AI_MODE);
-        MODE_TIMED = getResources().getResourceName(R.string.GAMEMODE_TIMED);
-        MODE_ELIMINATION = getResources().getResourceName(R.string.GAMEMODE_ELIMINATION);
+        MODE_OFFLINE = getResources().getString(R.string.OFFLINE_MODE);
+        MODE_ONLINE = getResources().getString(R.string.ONLINE_MODE);
+        MODE_SOLO = getResources().getString(R.string.OFFLINE_SOLO_MODE);
+        MODE_AI = getResources().getString(R.string.OFFLINE_AI_MODE);
+        MODE_TIMED = getResources().getString(R.string.GAMEMODE_TIMED);
+        MODE_ELIMINATION = getResources().getString(R.string.GAMEMODE_ELIMINATION);
         timeLeftInMillis=0;
         tvScore=(TextView)findViewById(R.id.tvScore);
         tvTimer=(TextView)findViewById(R.id.tvTimer);
@@ -120,22 +127,28 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         fadeOut= AnimationUtils.loadAnimation(this,R.anim.fadeout);
         fadeIn=AnimationUtils.loadAnimation(this,R.anim.fadein);
         etAns=(EditText)findViewById(R.id.editText);
+        AIDictionary=new HashMap<>();
+        usedWords=new HashMap<>();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         etAns.setOnKeyListener(this);
-        if (Mode[0] == MODE_OFFLINE) {
-            if(Mode[1]==MODE_SOLO)
+        if (Mode[0].equals(MODE_OFFLINE)) {
+            if(Mode[1].equals(MODE_SOLO))
             {
-                if(Mode[2]==MODE_TIMED)
+                if(Mode[2].equals(MODE_TIMED))
                 {
+                    tvTimer.setText(getResources().getString(R.string.TimerReset));
+                    tvScore.setText(getResources().getString(R.string.StartScore_TIMED));
 
                 }
-                else if(Mode[2]==MODE_ELIMINATION)
+                else if(Mode[2].equals(MODE_ELIMINATION))
                 {
-
+                    btnAdd.setVisibility(View.INVISIBLE);
+                    btnSub.setVisibility(View.INVISIBLE);
+                    tvScore.setText(getResources().getString(R.string.StartScore_ELIMINATION));
                 }
             }
             else if(Mode[1]==MODE_AI)
@@ -165,7 +178,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
                 updateTimer();
                 break;
             case R.id.btSub:
-                if(timeLeftInMillis>MIN_MILLIS)
+                if(timeLeftInMillis>MIN_TIMED_MILLIS)
                     timeLeftInMillis-=INTERVAL_MILLIS;
                 updateTimer();
                 break;
@@ -178,9 +191,12 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
 public void AnimateFadeOut()
 {
     FlingAnimation fling = new FlingAnimation(btnStart, DynamicAnimation.TRANSLATION_Y);
+    if(Mode[2].equals(MODE_TIMED))
+    {
+        btnSub.startAnimation(fadeOut);
+        btnAdd.startAnimation(fadeOut);
+    }
     btnStart.startAnimation(fadeOut);
-    btnSub.startAnimation(fadeOut);
-    btnAdd.startAnimation(fadeOut);
     fling.setStartVelocity(2000)
             .setMaxValue(2000)
             .setMinValue(-2000)
@@ -201,16 +217,40 @@ public void AnimateFadeOut()
                 if(message.arg1==CODE_SEND)
                 {
                     String word=message.obj.toString();
+                    ArrayList<String> list=usedWords.get(word.charAt(0));
+                    if(list==null)
+                        list=new ArrayList<>();
+                    list.add(word);
+                    usedWords.put(word.charAt(0),list);
                     if(watcher!=null)
                         etAns.removeTextChangedListener(watcher);
                     Log.d(TAG,"word: "+word);
-                    String currentScore=tvScore.getText().toString();
-                    int score=Integer.parseInt(currentScore.split(" : ")[1]);
-                    Log.d(TAG,"Score "+score);
-                    score+=10*word.length();
-                    currentScore=currentScore.split(" : ")[0];
-                    currentScore+=" : "+score;
-                    tvScore.setText(currentScore);
+                    if(Mode[2].equals(MODE_TIMED)) {
+                        String currentScore = tvScore.getText().toString();
+                        int score = Integer.parseInt(currentScore.split(" : ")[1]);
+                        Log.d(TAG, "Score " + score);
+                        score += 10 * word.length();
+                        currentScore = currentScore.split(" : ")[0];
+                        currentScore += " : " + score;
+                        tvScore.setText(currentScore);
+                    }
+                    if(Mode[2].equals(MODE_ELIMINATION))
+                    {
+                        if(setTimeMillis>MIN_ELIM_MILLIS) {
+                            timeLeftInMillis = setTimeMillis;
+                            timeLeftInMillis -= MIN_ELIM_MILLIS;
+                            setTimeMillis=timeLeftInMillis;
+                        }
+                        else timeLeftInMillis=setTimeMillis;
+                        stopTimer();
+                        startCountDown();
+                        String currentScore = tvScore.getText().toString();
+                        int wave=Integer.parseInt(String.valueOf(tvScore.getText().toString().split(" ")[1]))+1;
+                        currentScore=currentScore.split(" ")[0];
+                        currentScore+=" "+wave;
+                        tvScore.setText(currentScore);
+
+                    }
                     final String newWord=String.valueOf(word.charAt(word.length()-1)).toUpperCase();
                     etAns.setText(newWord.toUpperCase());
                     Selection.setSelection(etAns.getText(), etAns.getText().length());
@@ -262,11 +302,7 @@ public void AnimateFadeOut()
         });
 
     }
-public void stopTimer()
-{
-    timer.cancel();
-    timerIsRun=false;
-}
+
 public void updateTimer()
 {
     int minutes= (int)timeLeftInMillis/60000;
@@ -289,15 +325,27 @@ public void updateTimer()
 
             @Override
             public void onFinish() {
+                if(Mode[2].equals(MODE_ELIMINATION))
+                {
+                    tvTimer.setText(getResources().getString(R.string.TimerElimination));
+                    setTimeMillis=MAX_ELIM_MILLIS;
+                    timeLeftInMillis=MAX_ELIM_MILLIS;
+                }
                 startCountDown();
             }
         }.start();
     }
 
+    public void stopTimer()
+    {
+        timer.cancel();
+        timerIsRun=false;
+    }
 public void startCountDown()
 {
     execGame();
-    timeLeftInMillis=Integer.parseInt(tvTimer.getText().toString().split("m")[0])*60*1000;
+    if(Mode[2].equals(MODE_TIMED))
+        timeLeftInMillis=Integer.parseInt(tvTimer.getText().toString().split("m")[0])*60*1000;
     timer=new CountDownTimer(timeLeftInMillis+1,1000) {
         @Override
         public void onTick(long l) {
@@ -315,6 +363,7 @@ public void startCountDown()
 
     @Override
     public boolean onKey(View view, int i, KeyEvent keyEvent) {
+        etAns.setTextColor(Color.BLACK);
         if(keyEvent.getAction()==KeyEvent.ACTION_DOWN)
         switch(keyEvent.getKeyCode())
         {
@@ -347,17 +396,18 @@ public void startCountDown()
                                 Toast t=Toast.makeText(GameActivity.this,getResources().getString(R.string.ERROR_MESSAGE_1),Toast.LENGTH_SHORT);
                                 t.setGravity(Gravity.CENTER,0,0);
                                 t.show();
+                                etAns.setTextColor(Color.RED);
                             }
                         }
 
                     };
                     mTask.execute();
-                    Log.d(TAG,":[{]");
                 }
                 else {
                     Toast t=Toast.makeText(GameActivity.this,getResources().getString(R.string.ERROR_MESSAGE_1),Toast.LENGTH_SHORT);
                     t.setGravity(Gravity.CENTER,0,0);
                     t.show();
+                    etAns.setTextColor(Color.RED);
                 }
                 break;
         }
@@ -366,13 +416,36 @@ public void startCountDown()
 
     public Boolean isValid(String s)
     {
-        if(s.isEmpty())
-            return false;
-        if(s.contains(" "))
-            return false;
-        if(s.length()>45)
-            return false;
-        return s.matches("[a-zA-Z]+");
+        Log.d(TAG,"checking is valid, isexist:"+usedWords.containsValue(s));
+        ArrayList<String> list=usedWords.get(s.charAt(0));
+        if(list!=null)
+            if(list.contains(s))
+                return false;
+        return s.matches("[a-zA-Z]+")&&!s.isEmpty()&&!s.contains(" ")&&s.length()<=45;
+    }
+
+    public void InitializeAI()
+    {
+        //Get the text file
+        File file = new File("assets/","AIQuickDictionary.txt");
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            DataInputStream in = new DataInputStream(fis);
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+
+            String strLine;
+            while ((strLine = br.readLine()) != null) {
+                ArrayList<String> list=AIDictionary.get(strLine.charAt(0));
+                list.add(strLine);
+                usedWords.put(strLine.charAt(0),list);
+            }
+            br.close();
+            in.close();
+            fis.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     }

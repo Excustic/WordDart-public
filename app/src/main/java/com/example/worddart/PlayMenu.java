@@ -10,14 +10,20 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+
 public class PlayMenu extends AppCompatActivity implements View.OnClickListener, View.OnTouchListener {
     Button[] btn;
     Dialog d;
     ImageButton ibTimed,ibElimination;
     Intent intent;
     String[] Mode;
-    public final String TIMED="GAMEMODE_TIMED";
-    public final String ELIMINATION="GAMEMODE_ELIMINATION";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,4 +109,5 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         d.show();
 
     }
+
 }
