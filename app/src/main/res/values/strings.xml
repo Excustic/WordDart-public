@@ -40,5 +40,7 @@
     <string name="TimerReset">05m 00s</string>
     <string name="StartMessage">Get ready! Clock will start ticking in 5 seconds.</string>
     <string name="StartScore">Score : 0</string>
+    <string name="StartMessage2">Type a random word</string>
+    <string name="ERROR_MESSAGE_1">Invalid word</string>
 
 </resources>
