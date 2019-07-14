@@ -1,6 +1,7 @@
 package com.example.worddart;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.widget.TextViewCompat;
 
 import android.app.Dialog;
 import android.content.Intent;
@@ -9,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -24,10 +26,13 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
     ImageButton ibTimed,ibElimination;
     Intent intent;
     String[] Mode;
+    TextView tvOnline,tvOffline;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_play_menu);
+        tvOffline=(TextView)findViewById(R.id.Offline);
+        tvOnline=(TextView)findViewById(R.id.multi);
         intent=new Intent();
         Mode=new String[3];
         intent.setClass(this, GameActivity.class);
@@ -38,6 +43,9 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             btn[i].setOnClickListener(this);
             btn[i].setOnTouchListener(this);
         }
+        TextViewCompat.setAutoSizeTextTypeWithDefaults(tvOnline,TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM);
+        TextViewCompat.setAutoSizeTextTypeWithDefaults(tvOffline,TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM);
+
     }
 
     @Override

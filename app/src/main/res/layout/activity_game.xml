@@ -111,7 +111,7 @@
         android:cursorVisible="false"
         android:ems="12"
         android:hint="@string/StartMessage2"
-        android:inputType="textVisiblePassword"
+        android:inputType="textVisiblePassword|textCapSentences"
         android:maxLines="1"
         android:text=""
         android:visibility="invisible"

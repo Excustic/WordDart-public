@@ -2,6 +2,7 @@ package com.example.worddart;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ShareCompat;
+import androidx.core.content.ContextCompat;
 
 import android.app.IntentService;
 import android.content.Intent;
@@ -11,8 +12,11 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -39,7 +43,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         intent=new Intent();
 
-        profile=(CircleImageView)findViewById(R.id.circleImageView);
+        profile=(CircleImageView) findViewById(R.id.circleImageView);
         dispName=(TextView)findViewById(R.id.dispName);
         btnPlay=(Button)findViewById(R.id.btnPlay);
         btnStats=(Button)findViewById(R.id.btnStats);
@@ -61,6 +65,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         updateUI(account);
+
+        Glide.with(this).load(ContextCompat.getDrawable(this, R.drawable.proficon_crab)
+        ).apply(RequestOptions.circleCropTransform()).into(profile);
     }
 
     @Override
@@ -161,4 +168,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             dispName.setText(account.getDisplayName());
         }
     }
+
 }

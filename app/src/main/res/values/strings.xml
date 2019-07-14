@@ -31,6 +31,9 @@
     <!-- Sync Preferences -->
 
     <!-- Game const strings-->
+    <string name="BUTTON_PLAY">PLAY</string>
+    <string name="BUTTON_SETTINGS">SETTINGS</string>
+    <string name="BUTTON_STATS">STATS</string>
     <string name="OFFLINE_MODE">OFFLINE</string>
     <string name="ONLINE_MODE">MULTIPLAYER</string>;
     <string name="GAMEMODE_TIMED">TIMED</string>

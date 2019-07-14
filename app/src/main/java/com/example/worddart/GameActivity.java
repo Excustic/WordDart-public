@@ -2,13 +2,20 @@ package com.example.worddart;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.dynamicanimation.animation.DynamicAnimation;
 import androidx.dynamicanimation.animation.FlingAnimation;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Instrumentation;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.nfc.Tag;
 import android.os.AsyncTask;
@@ -27,8 +34,10 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -207,7 +216,6 @@ public void AnimateFadeOut()
             .show();
 
 }
-
     public void execGame()
     {
         etAns.setVisibility(View.VISIBLE);
@@ -355,7 +363,7 @@ public void startCountDown()
 
         @Override
         public void onFinish() {
-
+                createDialog();
         }
     }.start();
     timerIsRun=true;
@@ -363,65 +371,65 @@ public void startCountDown()
 
     @Override
     public boolean onKey(View view, int i, KeyEvent keyEvent) {
-        etAns.setTextColor(Color.BLACK);
-        if(keyEvent.getAction()==KeyEvent.ACTION_DOWN)
-        switch(keyEvent.getKeyCode())
-        {
-            case KeyEvent.KEYCODE_ENTER:
-                if(isValid(etAns.getText().toString()))
-                {
-                    url=WIKI_API+etAns.getText().toString().toLowerCase()+JSON_ADDER;
-                    mTask = new AsyncTask<Void, Void, Void> () {
+        if (keyEvent.getAction() == KeyEvent.ACTION_DOWN){
+            etAns.setTextColor(Color.BLACK);
+            switch (keyEvent.getKeyCode()) {
+                case KeyEvent.KEYCODE_ENTER:
+                    if (isValid(etAns.getText().toString())) {
+                        url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
+                        mTask = new AsyncTask<Void, Void, Void>() {
 
-                        @Override
-                        protected Void doInBackground(Void... params) {
-                            try {
-                                jsonString = getJsonFromServer(url);
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
+                            @Override
+                            protected Void doInBackground(Void... params) {
+                                try {
+                                    jsonString = getJsonFromServer(url);
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                return null;
                             }
-                            return null;
-                        }
 
-                        @Override
-                        protected void onPostExecute(Void result) {
-                            super.onPostExecute(result);
-                            Message msg=new Message();
-                            msg.arg1=CODE_SEND;
-                            msg.obj=etAns.getText().toString();
-                            if(!jsonString.contains("-1"))
-                                handler.sendMessage(msg);
-                            else {
-                                Toast t=Toast.makeText(GameActivity.this,getResources().getString(R.string.ERROR_MESSAGE_1),Toast.LENGTH_SHORT);
-                                t.setGravity(Gravity.CENTER,0,0);
-                                t.show();
-                                etAns.setTextColor(Color.RED);
+                            @Override
+                            protected void onPostExecute(Void result) {
+                                super.onPostExecute(result);
+                                Message msg = new Message();
+                                msg.arg1 = CODE_SEND;
+                                msg.obj = etAns.getText().toString();
+                                if (!jsonString.contains("-1"))
+                                    handler.sendMessage(msg);
+                                else {
+                                    Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+                                    t.setGravity(Gravity.CENTER, 0, 0);
+                                    t.show();
+                                    etAns.setTextColor(Color.RED);
+                                }
                             }
-                        }
 
-                    };
-                    mTask.execute();
-                }
-                else {
-                    Toast t=Toast.makeText(GameActivity.this,getResources().getString(R.string.ERROR_MESSAGE_1),Toast.LENGTH_SHORT);
-                    t.setGravity(Gravity.CENTER,0,0);
-                    t.show();
-                    etAns.setTextColor(Color.RED);
-                }
-                break;
-        }
+                        };
+                        mTask.execute();
+                    } else {
+                        Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+                        t.setGravity(Gravity.CENTER, 0, 0);
+                        t.show();
+                        etAns.setTextColor(Color.RED);
+                    }
+                    break;
+            }
+    }
         return false;
     }
 
     public Boolean isValid(String s)
     {
         Log.d(TAG,"checking is valid, isexist:"+usedWords.containsValue(s));
-        ArrayList<String> list=usedWords.get(s.charAt(0));
-        if(list!=null)
-            if(list.contains(s))
-                return false;
-        return s.matches("[a-zA-Z]+")&&!s.isEmpty()&&!s.contains(" ")&&s.length()<=45;
+        if(!s.isEmpty()) {
+            ArrayList<String> list = usedWords.get(s.charAt(0));
+            if (list != null)
+                if (list.contains(s))
+                    return false;
+        }
+        return s.matches("[a-zA-Z]+")&&!s.isEmpty()&&!s.contains(" ")&&s.length()<=45&&s.length()>1;
     }
 
     public void InitializeAI()
@@ -446,6 +454,36 @@ public void startCountDown()
             e.printStackTrace();
         }
 
+    }
+    public void createDialog()
+    {
+        String msg="";
+        if(Mode[2].equals(MODE_ELIMINATION))
+            msg="Your score - "+tvScore.getText().toString();
+        if(Mode[2].equals(MODE_TIMED))
+            msg="Your score : "+tvScore.getText().toString().split(" : ")[1];
+        AlertDialog d=new AlertDialog.Builder(this)
+                .setTitle("Game Over")
+        .setMessage(msg)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        Intent intent =new Intent();
+                        intent.setClass(GameActivity.this,PlayMenu.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        startActivity(intent);
+                    }
+                })
+                .setNegativeButton("Play Again", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        GameActivity.this.recreate();
+                    }
+                }).setCancelable(false).show();
+        TextView tvMsg=(TextView)d.getWindow().findViewById(android.R.id.message);
+        tvMsg.setTypeface(ResourcesCompat.getFont(this,R.font.montserrat_regular));
+        TextView tvTitle=(TextView)d.getWindow().findViewById(android.R.id.title);
+        tvTitle.setTypeface(ResourcesCompat.getFont(this,R.font.bubble3d));
     }
 
     }
