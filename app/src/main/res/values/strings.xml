@@ -45,7 +45,7 @@
     <string name="StartMessage">Get ready! Game will begin in 5 seconds.</string>
     <string name="StartScore_TIMED">Score : 0</string>
     <string name="StartScore_ELIMINATION">WAVE 1</string>
-    <string name="StartMessage2">Type a random word</string>
+    <string name="StartMessage2">Type here</string>
     <string name="ERROR_MESSAGE_1">Invalid word or used already</string>
 
 </resources>

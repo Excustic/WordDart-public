@@ -1,10 +1,12 @@
 package com.example.worddart;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
@@ -91,14 +93,14 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             if(btn[i]==view)
                 index=i;
         }
-        int down=getResources().getColor(R.color.colorSecondary);
-        int up=getResources().getColor(R.color.colorPrimary);
+        Drawable down= ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_secondary);
+        Drawable up=ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_primary);
         if(index>=3) {
-            int help=down; down=up; up=help;
+            Drawable help=down; down=up; up=help;
         }
         if (motionEvent.getAction() == MotionEvent.ACTION_DOWN)
-            btn[index].setBackgroundColor(down);
-        else btn[index].setBackgroundColor(up);
+            btn[index].setBackground(down);
+        else btn[index].setBackground(up);
         return false;
     }
 

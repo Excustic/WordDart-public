@@ -41,6 +41,7 @@ dependencies {
 
     //Add Library
     implementation 'de.hdodenhof:circleimageview:2.2.0'
+    implementation 'com.marcouberti.autofitbutton:android-auto-fit-button:0.1.1@aar'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     implementation 'com.jackandphantom.android:circularimageview:1.2.0'

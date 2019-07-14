@@ -1,9 +1,14 @@
 <resources>
-
+    <declare-styleable name="FontFitTextView">
+        <attr name="minTextSize" format="dimension" />
+        <attr name="maxTextSize" format="dimension" />
+    </declare-styleable>
     <!-- Base application theme. -->
 <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
     <item name="android:windowTranslucentStatus">true</item>
     <item name="android:windowTranslucentNavigation">true</item>
     <item name="android:fitsSystemWindows">true</item>
+    <item name="android:textViewStyle">@font/montserrat_regular</item>
+    <item name="android:buttonStyle">@font/montserrat_regular</item>
 </style>
 </resources>

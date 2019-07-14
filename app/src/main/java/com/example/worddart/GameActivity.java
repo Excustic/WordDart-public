@@ -53,6 +53,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -79,7 +80,6 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     long timeLeftInMillis,setTimeMillis;
     Boolean timerIsRun;
     static final String JSON_ADDER="&format=json";
-    private static AsyncTask<Void, Void, Void> mTask;
     final int CODE_SEND=200;
     EditText etAns;
     Handler handler;
@@ -144,6 +144,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     protected void onStart() {
         super.onStart();
         etAns.setOnKeyListener(this);
+        etAns.performClick();
         if (Mode[0].equals(MODE_OFFLINE)) {
             if(Mode[1].equals(MODE_SOLO))
             {
@@ -160,23 +161,30 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
                     tvScore.setText(getResources().getString(R.string.StartScore_ELIMINATION));
                 }
             }
-            else if(Mode[1]==MODE_AI)
+            else if(Mode[1].equals(MODE_AI))
             {
-                if(Mode[2]==MODE_TIMED)
+                if(Mode[2].equals(MODE_TIMED))
                 {
 
                 }
-                else if(Mode[2]==MODE_ELIMINATION)
+                else if(Mode[2].equals(MODE_ELIMINATION))
                 {
 
                 }
             }
         }
-        else if(Mode[0]==MODE_ONLINE)
+        else if(Mode[0].equals(MODE_ONLINE))
         {
 
         }
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopTimer();
+    }
+
     @Override
     public void onClick(View view) {
 
@@ -292,7 +300,6 @@ public void AnimateFadeOut()
                     };
                     etAns.addTextChangedListener(watcher);
 
-
                 }
                     new Thread(new Runnable() {
                         @Override
@@ -301,6 +308,7 @@ public void AnimateFadeOut()
                                 Instrumentation inst = new Instrumentation();
                                 inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);
                             } catch (Exception e) {
+                                Log.d(TAG,e.toString());
                             }
                         }
                     }).start();
@@ -375,39 +383,10 @@ public void startCountDown()
             etAns.setTextColor(Color.BLACK);
             switch (keyEvent.getKeyCode()) {
                 case KeyEvent.KEYCODE_ENTER:
+                    // TODO make keyboard static, prevent it from hiding
                     if (isValid(etAns.getText().toString())) {
                         url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
-                        mTask = new AsyncTask<Void, Void, Void>() {
-
-                            @Override
-                            protected Void doInBackground(Void... params) {
-                                try {
-                                    jsonString = getJsonFromServer(url);
-                                } catch (IOException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
-                                return null;
-                            }
-
-                            @Override
-                            protected void onPostExecute(Void result) {
-                                super.onPostExecute(result);
-                                Message msg = new Message();
-                                msg.arg1 = CODE_SEND;
-                                msg.obj = etAns.getText().toString();
-                                if (!jsonString.contains("-1"))
-                                    handler.sendMessage(msg);
-                                else {
-                                    Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
-                                    t.setGravity(Gravity.CENTER, 0, 0);
-                                    t.show();
-                                    etAns.setTextColor(Color.RED);
-                                }
-                            }
-
-                        };
-                        mTask.execute();
+                        new MyTask(this).execute();
                     } else {
                         Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
                         t.setGravity(Gravity.CENTER, 0, 0);
@@ -444,7 +423,9 @@ public void startCountDown()
             String strLine;
             while ((strLine = br.readLine()) != null) {
                 ArrayList<String> list=AIDictionary.get(strLine.charAt(0));
-                list.add(strLine);
+                if (list != null) {
+                    list.add(strLine);
+                }
                 usedWords.put(strLine.charAt(0),list);
             }
             br.close();
@@ -462,7 +443,7 @@ public void startCountDown()
             msg="Your score - "+tvScore.getText().toString();
         if(Mode[2].equals(MODE_TIMED))
             msg="Your score : "+tvScore.getText().toString().split(" : ")[1];
-        AlertDialog d=new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
                 .setTitle("Game Over")
         .setMessage(msg)
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -480,10 +461,49 @@ public void startCountDown()
                         GameActivity.this.recreate();
                     }
                 }).setCancelable(false).show();
-        TextView tvMsg=(TextView)d.getWindow().findViewById(android.R.id.message);
-        tvMsg.setTypeface(ResourcesCompat.getFont(this,R.font.montserrat_regular));
-        TextView tvTitle=(TextView)d.getWindow().findViewById(android.R.id.title);
-        tvTitle.setTypeface(ResourcesCompat.getFont(this,R.font.bubble3d));
+//        TextView tvMsg=(TextView)d.getWindow().findViewById(android.R.id.message);
+//        tvMsg.setTypeface(ResourcesCompat.getFont(this,R.font.montserrat_regular));
+//        TextView tvTitle=(TextView)d.getWindow().findViewById(android.R.id.title);
+//        tvTitle.setTypeface(ResourcesCompat.getFont(this,R.font.bubble3d));
+    }
+    private static class MyTask extends AsyncTask<Void,Void,Void>
+    {
+        private WeakReference<GameActivity> activityReference;
+        // only retain a weak reference to the activity
+        MyTask(GameActivity context) {
+            activityReference = new WeakReference<>(context);
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                GameActivity activity=activityReference.get();
+                if (activity == null || activity.isFinishing()) return null;
+                activity.jsonString = getJsonFromServer(activity.url);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            super.onPostExecute(result);
+            GameActivity activity=activityReference.get();
+            if (activity == null || activity.isFinishing()) return;
+            Message msg = new Message();
+            msg.arg1 = activity.CODE_SEND;
+            msg.obj = activity.etAns.getText().toString();
+            if (!activity.jsonString.contains("-1"))
+                activity.handler.sendMessage(msg);
+            else {
+                Toast t = Toast.makeText(activity.getApplicationContext(), activity.getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+                t.setGravity(Gravity.CENTER, 0, 0);
+                t.show();
+                activity.etAns.setTextColor(Color.RED);
+            }
+        }
+
     }
 
     }

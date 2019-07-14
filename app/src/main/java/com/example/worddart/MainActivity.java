@@ -95,13 +95,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(MotionEvent.ACTION_DOWN==motionEvent.getAction()) {
             switch (view.getId()) {
                 case R.id.btnPlay:
-                    btnPlay.setBackgroundColor(getResources().getColor(R.color.colorSecondary));
+                    btnPlay.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_secondary));
                     break;
                 case R.id.btnStats:
-                    btnStats.setBackgroundColor(getResources().getColor(R.color.colorSecondary));
+                    btnStats.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_secondary));
                     break;
                 case R.id.btnSettings:
-                    btnSettings.setBackgroundColor(getResources().getColor(R.color.colorSecondary));
+                    btnSettings.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_secondary));
                     break;
             }
         }
@@ -109,13 +109,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             switch (view.getId()) {
                 case R.id.btnPlay:
-                    btnPlay.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    btnPlay.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_primary));
                     break;
                 case R.id.btnStats:
-                    btnStats.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    btnStats.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_primary));
                     break;
                 case R.id.btnSettings:
-                    btnSettings.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    btnSettings.setBackground(ContextCompat.getDrawable(this,R.drawable.button_bg_rounded_primary));
                     break;
             }
         }
