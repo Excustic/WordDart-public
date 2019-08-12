@@ -2,69 +2,47 @@ package com.example.worddart;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.dynamicanimation.animation.DynamicAnimation;
 import androidx.dynamicanimation.animation.FlingAnimation;
 
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.Instrumentation;
-import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Typeface;
-import android.net.Uri;
-import android.nfc.Tag;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
-import android.text.InputFilter;
 import android.text.Selection;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.snackbar.Snackbar;
 
 
-import org.w3c.dom.Text;
-
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import static android.icu.lang.UCharacter.GraphemeClusterBreak.T;
 
 public class GameActivity extends AppCompatActivity implements View.OnClickListener, View.OnKeyListener {
     private static final String TAG = "STATUS_GAME";
@@ -74,7 +52,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     final long INTERVAL_MILLIS=5*60*1000, MAX_MILLIS=85*60*1000,MIN_TIMED_MILLIS=INTERVAL_MILLIS,MAX_ELIM_MILLIS=2*60*1000,MIN_ELIM_MILLIS=10*1000;
     static final String WIKI_API= "https://en.wiktionary.org/w/api.php?action=query&titles=";
     TextView tvTimer,tvMode,tvScore;
-    Button btnAdd,btnSub,btnStart;
+    Button btnAdd,btnSub,btnStart,btnCheck;
     Animation fadeOut,fadeIn;
     CountDownTimer timer;
     long timeLeftInMillis,setTimeMillis;
@@ -86,6 +64,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     TextWatcher watcher;
     String jsonString;
     String url;
+    String FinalWord; // this variable is the exact word that is being checked, which means the program won't depend on the edittext.text property that can be changed during the task
     HashMap<Character, ArrayList<String>> AIDictionary,usedWords;
 
     public static String getJsonFromServer(String url) throws IOException {
@@ -111,7 +90,6 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
         intent = getIntent();
         Mode = intent.getStringArrayExtra("MODE");
         assert Mode != null;
@@ -129,6 +107,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         tvMode.setText(Mode[2]);
         btnAdd=(Button)findViewById(R.id.btAdd);
         btnSub=(Button)findViewById(R.id.btSub);
+        btnCheck=(Button)findViewById(R.id.btnCheck);
         btnStart=(Button)findViewById(R.id.btnStart);
         btnAdd.setOnClickListener(this);
         btnSub.setOnClickListener(this);
@@ -138,13 +117,55 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         etAns=(EditText)findViewById(R.id.editText);
         AIDictionary=new HashMap<>();
         usedWords=new HashMap<>();
+        etAns.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus) {
+                    Toast.makeText(GameActivity.this, "focus loosed", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(GameActivity.this, "focused", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+        InitDictionary();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        etAns.setOnKeyListener(this);
-        etAns.performClick();
+
+        //etAns.performClick();
+        //getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        btnCheck.setOnClickListener(this);
+//        etAns.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+//            @Override
+//            public boolean onEditorAction(TextView textView, int i, KeyEvent keyEvent) {
+//                boolean handled = false;
+//                if(i== EditorInfo.IME_ACTION_DONE||((keyEvent.getKeyCode()==KeyEvent.KEYCODE_ENTER)&&keyEvent.getAction()==KeyEvent.ACTION_DOWN))
+//                {
+//                        etAns.setTextColor(Color.BLACK);
+//                                // TODO make keyboard static, prevent it from hiding
+//                                if (isValid(etAns.getText().toString())) {
+//                                    url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
+//                                    new MyTask(GameActivity.this).execute();
+//                                } else {
+//                                    Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+//                                    t.setGravity(Gravity.CENTER, 0, 0);
+//                                    t.show();
+//                                    etAns.setTextColor(Color.RED);
+//                                }
+//                    handled=true;
+//                    etAns.post(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+//                        }
+//                    })      ;
+//                    }
+//                return handled;
+//            }
+//        });
+
         if (Mode[0].equals(MODE_OFFLINE)) {
             if(Mode[1].equals(MODE_SOLO))
             {
@@ -203,6 +224,18 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
                 AnimateFadeOut();
                 startTimer();
                 break;
+            case R.id.btnCheck:
+                FinalWord=etAns.getText().toString();
+                if (isValid(etAns.getText().toString())) {
+                    url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
+                    new MyTask(GameActivity.this).execute();
+                } else {
+                    Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+                    t.setGravity(Gravity.CENTER, 0, 0);
+                    t.show();
+                    etAns.setTextColor(Color.RED);
+                }
+                break;
         }
     }
 public void AnimateFadeOut()
@@ -226,12 +259,15 @@ public void AnimateFadeOut()
 }
     public void execGame()
     {
+        btnCheck.setVisibility(View.VISIBLE);
         etAns.setVisibility(View.VISIBLE);
+        etAns.setText("");
         handler=new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(@NonNull Message message) {
                 if(message.arg1==CODE_SEND)
                 {
+                    etAns.setTextColor(Color.BLACK);
                     String word=message.obj.toString();
                     ArrayList<String> list=usedWords.get(word.charAt(0));
                     if(list==null)
@@ -240,7 +276,7 @@ public void AnimateFadeOut()
                     usedWords.put(word.charAt(0),list);
                     if(watcher!=null)
                         etAns.removeTextChangedListener(watcher);
-                    Log.d(TAG,"word: "+word);
+                    Log.d(TAG,"word: "+FinalWord);
                     if(Mode[2].equals(MODE_TIMED)) {
                         String currentScore = tvScore.getText().toString();
                         int score = Integer.parseInt(currentScore.split(" : ")[1]);
@@ -267,9 +303,10 @@ public void AnimateFadeOut()
                         tvScore.setText(currentScore);
 
                     }
-                    final String newWord=String.valueOf(word.charAt(word.length()-1)).toUpperCase();
+                    final String newWord=String.valueOf(FinalWord.charAt(FinalWord.length()-1)).toUpperCase();
                     etAns.setText(newWord.toUpperCase());
-                    Selection.setSelection(etAns.getText(), etAns.getText().length());
+                    etAns.setSelection(1);
+                    etAns.setCursorVisible(true);
                     watcher=new TextWatcher() {
 
                         @Override
@@ -301,17 +338,17 @@ public void AnimateFadeOut()
                     etAns.addTextChangedListener(watcher);
 
                 }
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                Instrumentation inst = new Instrumentation();
-                                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);
-                            } catch (Exception e) {
-                                Log.d(TAG,e.toString());
-                            }
-                        }
-                    }).start();
+//                    new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            try {
+//                                Instrumentation inst = new Instrumentation();
+//                                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);
+//                            } catch (Exception e) {
+//                                Log.d(TAG,e.toString());
+//                            }
+//                        }
+//                    }).start();
                      return false;
 
                 }
@@ -332,7 +369,7 @@ public void updateTimer()
         timer=new CountDownTimer(4000,10) {
             @Override
             public void onTick(long l) {
-                Log.d(TAG,"millisecs until start:"+l);
+                //Log.d(TAG,"millisecs until start:"+l);
                 if(l<1000&&!animStart[0]) {
                     tvScore.startAnimation(fadeIn);
                     animStart[0] =true;
@@ -379,23 +416,26 @@ public void startCountDown()
 
     @Override
     public boolean onKey(View view, int i, KeyEvent keyEvent) {
-        if (keyEvent.getAction() == KeyEvent.ACTION_DOWN){
-            etAns.setTextColor(Color.BLACK);
-            switch (keyEvent.getKeyCode()) {
-                case KeyEvent.KEYCODE_ENTER:
-                    // TODO make keyboard static, prevent it from hiding
-                    if (isValid(etAns.getText().toString())) {
-                        url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
-                        new MyTask(this).execute();
-                    } else {
-                        Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
-                        t.setGravity(Gravity.CENTER, 0, 0);
-                        t.show();
-                        etAns.setTextColor(Color.RED);
-                    }
-                    break;
-            }
-    }
+//        if (keyEvent.getAction() == KeyEvent.ACTION_DOWN){
+//            etAns.setTextColor(Color.BLACK);
+//            etAns.requestFocus();
+//            switch (keyEvent.getKeyCode()) {
+//                case KeyEvent.KEYCODE_ENTER:
+//                    // TODO make keyboard static, prevent it from hiding
+//                    etAns.setSelected(true);
+//                    if (isValid(etAns.getText().toString())) {
+//                        url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
+//                        new MyTask(this).execute();
+//                    } else {
+//                        Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+//                        t.setGravity(Gravity.CENTER, 0, 0);
+//                        t.show();
+//                        etAns.setTextColor(Color.RED);
+//                    }
+//                    break;
+//            }
+//    }
+//        etAns.requestFocus();
         return false;
     }
 
@@ -411,36 +451,65 @@ public void startCountDown()
         return s.matches("[a-zA-Z]+")&&!s.isEmpty()&&!s.contains(" ")&&s.length()<=45&&s.length()>1;
     }
 
-    public void InitializeAI()
+    public void InitDictionary()
     {
         //Get the text file
-        File file = new File("assets/","AIQuickDictionary.txt");
+//        File file = new File("assets/", "raw/Nouns.txt");
+//        try {
+//            FileInputStream fis = new FileInputStream(file);
+//            DataInputStream in = new DataInputStream(fis);
+//            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+//            String strLine;
+//            while ((strLine = br.readLine()) != null) {
+//                ArrayList<String> list=AIDictionary.get(strLine.charAt(0));
+//                if (list != null) {
+//                    list.add(strLine);
+//                }
+//                usedWords.put(strLine.charAt(0),list);
+//            }
+//            br.close();
+//            in.close();
+//            fis.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        BufferedReader reader = null;
         try {
-            FileInputStream fis = new FileInputStream(file);
-            DataInputStream in = new DataInputStream(fis);
-            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            reader = new BufferedReader(
+                    new InputStreamReader(getAssets().open("raw/Nouns.txt"), "UTF-8"));
 
-            String strLine;
-            while ((strLine = br.readLine()) != null) {
-                ArrayList<String> list=AIDictionary.get(strLine.charAt(0));
-                if (list != null) {
-                    list.add(strLine);
+            // do reading, usually loop until end of file reading
+            String mLine;
+            while ((mLine = reader.readLine()) != null) {
+                //process line
+                mLine=mLine.toLowerCase();
+                ArrayList<String> list=AIDictionary.get(mLine.charAt(0));
+                if(list==null) {
+                    list=new ArrayList<>();
+                    list.add(mLine);
                 }
-                usedWords.put(strLine.charAt(0),list);
+                else{
+                    list.add(mLine);
+                }
+                AIDictionary.put(mLine.charAt(0),list);
             }
-            br.close();
-            in.close();
-            fis.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            //log the exception
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    //log the exception
+                }
+            }
         }
-
     }
     public void createDialog()
     {
         String msg="";
         if(Mode[2].equals(MODE_ELIMINATION))
-            msg="Your score - "+tvScore.getText().toString();
+            msg="Your score F- "+tvScore.getText().toString();
         if(Mode[2].equals(MODE_TIMED))
             msg="Your score : "+tvScore.getText().toString().split(" : ")[1];
         new AlertDialog.Builder(this)
@@ -493,15 +562,34 @@ public void startCountDown()
             if (activity == null || activity.isFinishing()) return;
             Message msg = new Message();
             msg.arg1 = activity.CODE_SEND;
-            msg.obj = activity.etAns.getText().toString();
-            if (!activity.jsonString.contains("-1"))
-                activity.handler.sendMessage(msg);
+            msg.obj = activity.FinalWord;
+//            if (!activity.jsonString.contains("-1")) {
+//                activity.handler.sendMessage(msg);
+//            }
+//            else {
+//                Toast t = Toast.makeText(activity.getApplicationContext(), activity.getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+//                t.setGravity(Gravity.CENTER, 0, 0);
+//                t.show();
+//                activity.etAns.setTextColor(Color.RED);
+//            }
+            String word=activity.FinalWord.toLowerCase();
+            ArrayList<String> list = activity.AIDictionary.get(word.charAt(0));
+            if (list != null) {
+                if (list.contains(word))
+                {
+                    Log.d(TAG, "onPostExecute: "+activity.AIDictionary.get('n').contains("nag"));
+                    activity.handler.sendMessage(msg);
+                    return;
+                }
+
+            }
             else {
                 Toast t = Toast.makeText(activity.getApplicationContext(), activity.getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
                 t.setGravity(Gravity.CENTER, 0, 0);
                 t.show();
                 activity.etAns.setTextColor(Color.RED);
             }
+
         }
 
     }
