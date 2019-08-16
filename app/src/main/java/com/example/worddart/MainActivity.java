@@ -3,10 +3,13 @@ package com.example.worddart;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ShareCompat;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
 import android.app.IntentService;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -25,6 +28,8 @@ import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 
+import java.util.Objects;
+
 import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, View.OnTouchListener {
@@ -36,6 +41,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Intent intent;
     GoogleSignInClient mGoogleSignInClient;
     CircleImageView profile;
+    SharedPreferences sp;
+    SharedPreferences.Editor editor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +65,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnPlay.setOnTouchListener(this);
         btnStats.setOnTouchListener(this);
         btnSettings.setOnTouchListener(this);
+
+        sp= PreferenceManager.getDefaultSharedPreferences(this);
+        editor=sp.edit();
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
@@ -162,6 +172,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         else
         {
+            if(account.getPhotoUrl()!=null)
+            editor.putString("ImageURL", account.getPhotoUrl().toString());
+            editor.putString("profName",account.getDisplayName());
+            editor.apply();
             profile.setImageURI(account.getPhotoUrl());
             profile.setBorderColor(Color.WHITE);
             profile.setBorderWidth(3);

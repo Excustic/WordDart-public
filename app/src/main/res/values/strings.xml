@@ -44,8 +44,9 @@
     <string name="TimerElimination">02m 00s</string>
     <string name="StartMessage">Get ready! Game will begin in 5 seconds.</string>
     <string name="StartScore_TIMED">Score : 0</string>
+    <string name="StartScore_TIMED_AI">Score : 0 / 0</string>
     <string name="StartScore_ELIMINATION">WAVE 1</string>
     <string name="StartMessage2">Type here</string>
-    <string name="ERROR_MESSAGE_1">Invalid word or used already</string>
+    <string name="ERROR_MESSAGE_1">Invalid word / not a noun / used already</string>
 
 </resources>

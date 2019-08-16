@@ -2,12 +2,19 @@ package com.example.worddart;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.dynamicanimation.animation.DynamicAnimation;
 import androidx.dynamicanimation.animation.FlingAnimation;
+import androidx.preference.PreferenceManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -18,11 +25,14 @@ import android.text.Editable;
 import android.text.Selection;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -30,6 +40,8 @@ import android.widget.Toast;
 
 import com.google.android.material.snackbar.Snackbar;
 
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -43,9 +55,14 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Random;
 
-public class GameActivity extends AppCompatActivity implements View.OnClickListener, View.OnKeyListener {
+import static com.example.worddart.R.color.colorPrimary;
+
+public class GameActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String TAG = "STATUS_GAME";
+    SharedPreferences sp;
     Intent intent;
     String[] Mode;
     String MODE_OFFLINE,MODE_ONLINE,MODE_SOLO,MODE_AI,MODE_TIMED,MODE_ELIMINATION;
@@ -61,11 +78,19 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     final int CODE_SEND=200;
     EditText etAns;
     Handler handler;
+    SharedPreferences.Editor editor;
+    ArrayList<String> profiles,names;
     TextWatcher watcher;
     String jsonString;
     String url;
     String FinalWord; // this variable is the exact word that is being checked, which means the program won't depend on the edittext.text property that can be changed during the task
     HashMap<Character, ArrayList<String>> AIDictionary,usedWords;
+    private Boolean AIsTurn;
+    private int mIndex;
+    private Handler mHandler;
+    private Runnable characterAdder;
+    private CharSequence mText;
+    private long mDelay;
 
     public static String getJsonFromServer(String url) throws IOException {
         Log.d(TAG,url);
@@ -115,18 +140,12 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         fadeOut= AnimationUtils.loadAnimation(this,R.anim.fadeout);
         fadeIn=AnimationUtils.loadAnimation(this,R.anim.fadein);
         etAns=(EditText)findViewById(R.id.editText);
+        profiles=new ArrayList<>(); names=new ArrayList<>();
         AIDictionary=new HashMap<>();
         usedWords=new HashMap<>();
-        etAns.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (!hasFocus) {
-                    Toast.makeText(GameActivity.this, "focus loosed", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(GameActivity.this, "focused", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+        sp= PreferenceManager.getDefaultSharedPreferences(this);
+        editor=sp.edit();
         InitDictionary();
     }
 
@@ -165,10 +184,10 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
 //                return handled;
 //            }
 //        });
-
         if (Mode[0].equals(MODE_OFFLINE)) {
             if(Mode[1].equals(MODE_SOLO))
             {
+                findViewById(R.id.recycler_view).setVisibility(View.INVISIBLE);
                 if(Mode[2].equals(MODE_TIMED))
                 {
                     tvTimer.setText(getResources().getString(R.string.TimerReset));
@@ -184,13 +203,19 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
             }
             else if(Mode[1].equals(MODE_AI))
             {
+                AIsTurn=false;
+                InitBitmaps();
+
                 if(Mode[2].equals(MODE_TIMED))
                 {
-
+                    tvTimer.setText(getResources().getString(R.string.TimerReset));
+                    tvScore.setText(getResources().getString(R.string.StartScore_TIMED_AI));
                 }
                 else if(Mode[2].equals(MODE_ELIMINATION))
                 {
-
+                    btnAdd.setVisibility(View.INVISIBLE);
+                    btnSub.setVisibility(View.INVISIBLE);
+                    tvScore.setText(getResources().getString(R.string.StartScore_ELIMINATION));
                 }
             }
         }
@@ -225,16 +250,7 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
                 startTimer();
                 break;
             case R.id.btnCheck:
-                FinalWord=etAns.getText().toString();
-                if (isValid(etAns.getText().toString())) {
-                    url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
-                    new MyTask(GameActivity.this).execute();
-                } else {
-                    Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
-                    t.setGravity(Gravity.CENTER, 0, 0);
-                    t.show();
-                    etAns.setTextColor(Color.RED);
-                }
+                CheckWord();
                 break;
         }
     }
@@ -277,32 +293,6 @@ public void AnimateFadeOut()
                     if(watcher!=null)
                         etAns.removeTextChangedListener(watcher);
                     Log.d(TAG,"word: "+FinalWord);
-                    if(Mode[2].equals(MODE_TIMED)) {
-                        String currentScore = tvScore.getText().toString();
-                        int score = Integer.parseInt(currentScore.split(" : ")[1]);
-                        Log.d(TAG, "Score " + score);
-                        score += 10 * word.length();
-                        currentScore = currentScore.split(" : ")[0];
-                        currentScore += " : " + score;
-                        tvScore.setText(currentScore);
-                    }
-                    if(Mode[2].equals(MODE_ELIMINATION))
-                    {
-                        if(setTimeMillis>MIN_ELIM_MILLIS) {
-                            timeLeftInMillis = setTimeMillis;
-                            timeLeftInMillis -= MIN_ELIM_MILLIS;
-                            setTimeMillis=timeLeftInMillis;
-                        }
-                        else timeLeftInMillis=setTimeMillis;
-                        stopTimer();
-                        startCountDown();
-                        String currentScore = tvScore.getText().toString();
-                        int wave=Integer.parseInt(String.valueOf(tvScore.getText().toString().split(" ")[1]))+1;
-                        currentScore=currentScore.split(" ")[0];
-                        currentScore+=" "+wave;
-                        tvScore.setText(currentScore);
-
-                    }
                     final String newWord=String.valueOf(FinalWord.charAt(FinalWord.length()-1)).toUpperCase();
                     etAns.setText(newWord.toUpperCase());
                     etAns.setSelection(1);
@@ -336,24 +326,133 @@ public void AnimateFadeOut()
 
                     };
                     etAns.addTextChangedListener(watcher);
+                    if(Mode[2].equals(MODE_TIMED)) {
+                        if(Mode[1].equals(MODE_SOLO)) {
+                            String currentScore = tvScore.getText().toString();
+                            int score = Integer.parseInt(currentScore.split(" : ")[1]);
+                            Log.d(TAG, "Score " + score);
+                            score += 10 * word.length();
+                            currentScore = currentScore.split(" : ")[0];
+                            currentScore += " : " + score;
+                            tvScore.setText(currentScore);
+                        }
+                        else{
+                            String currentScore = tvScore.getText().toString();
+                            //Ai's score
+                            String AI = currentScore.split(" : ")[1].split("/")[1].replace(" ","");
+                            //player's score
+                            String Player= currentScore.split(" : ")[1].split("/")[0].replace(" ","");
+                            int score;
+                            if(AIsTurn) {
+                                score = Integer.parseInt(AI);
+                                Log.d(TAG, "ScoreAI " + score);
+                                score += 10 * word.length();
+                                currentScore = currentScore.split(" : ")[0];
+                                currentScore += " : " + Player+" / " + score;
+                                tvScore.setText(currentScore);
+                                AIsTurn=false;
+                                etAns.setEnabled(true);
+                                MarkTurn("Player");
+                                Refocus();
 
+                            }
+                            else {
+                                score = Integer.parseInt(Player);
+                                Log.d(TAG, "ScorePlayer" + score);
+                                score += 10 * word.length();
+                                currentScore = currentScore.split(" : ")[0];
+                                currentScore += " : " + score + " / " + AI;
+                                tvScore.setText(currentScore);
+                                MarkTurn("AI");
+                                AIPlay();
+                            }
+
+                        }
+                    }
+                    if(Mode[2].equals(MODE_ELIMINATION))
+                    {
+                        Log.d(TAG, "handleMessage: AisTurn-"+AIsTurn);
+                        if(Mode[1].equals(MODE_AI))
+                        {
+                            if(!AIsTurn) {
+                                timeLeftInMillis = setTimeMillis;
+                                stopTimer();
+                                startCountDown();
+                                AIPlay();
+                                MarkTurn("AI");
+                                return false;
+
+
+                            }
+                        }
+                        if(Mode[1].equals(MODE_SOLO)||(Mode[1].equals(MODE_AI)&&AIsTurn)) {
+                                Log.d(TAG, "handleMessage: players turn");
+                                if (setTimeMillis > MIN_ELIM_MILLIS) {
+                                    timeLeftInMillis = setTimeMillis;
+                                    timeLeftInMillis -= MIN_ELIM_MILLIS;
+                                    setTimeMillis = timeLeftInMillis;
+                                } else timeLeftInMillis = setTimeMillis;
+                                stopTimer();
+                                startCountDown();
+                                String currentScore = tvScore.getText().toString();
+                                int wave = Integer.parseInt(String.valueOf(tvScore.getText().toString().split(" ")[1])) + 1;
+                                currentScore = currentScore.split(" ")[0];
+                                currentScore += " " + wave;
+                                tvScore.setText(currentScore);
+                                etAns.setEnabled(true);
+                                if(Mode[1].equals(MODE_AI)&&AIsTurn)
+                                {
+                                    MarkTurn("Player");
+                                    Refocus();
+                                }
+                            AIsTurn=false;
+                        }
+
+                    }
                 }
-//                    new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            try {
-//                                Instrumentation inst = new Instrumentation();
-//                                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);
-//                            } catch (Exception e) {
-//                                Log.d(TAG,e.toString());
-//                            }
-//                        }
-//                    }).start();
                      return false;
-
                 }
         });
 
+    }
+
+    private void MarkTurn(String player) {
+        int index;
+        if(player.equals("Player"))
+        {
+            index=0;
+        }
+        else{
+            index=1;
+        }
+        Log.d(TAG, "handleMessage: erase");
+        //Erase the mark of AI's/Player's turn
+        {
+            RecyclerView rcv = findViewById(R.id.recycler_view);
+            View item = rcv.findViewHolderForAdapterPosition(1-index).itemView;
+            CardView cv = item.findViewById(R.id.cardview);
+            cv.setCardBackgroundColor(Color.WHITE);
+            TextView tv = cv.findViewById(R.id.list_name);
+            tv.setTextColor(Color.BLACK);
+        }
+        Log.d(TAG, "handleMessage: mark");
+        //Mark the Player's/AI's turn
+        {
+            RecyclerView rcv=findViewById(R.id.recycler_view);
+            View item=rcv.findViewHolderForAdapterPosition(index).itemView;
+            CardView cv=item.findViewById(R.id.cardview);
+            cv.setCardBackgroundColor(ContextCompat.getColor(GameActivity.this,colorPrimary));
+            TextView tv=cv.findViewById(R.id.list_name);
+            tv.setTextColor(Color.WHITE);
+        }
+    }
+
+    private void Refocus()
+    {
+        etAns.requestFocus();
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.showSoftInput(etAns, InputMethodManager.SHOW_IMPLICIT);
+        etAns.requestFocus();
     }
 
 public void updateTimer()
@@ -391,8 +490,10 @@ public void updateTimer()
 
     public void stopTimer()
     {
-        timer.cancel();
-        timerIsRun=false;
+        if(timer!=null) {
+            timer.cancel();
+            timerIsRun = false;
+        }
     }
 public void startCountDown()
 {
@@ -414,65 +515,23 @@ public void startCountDown()
     timerIsRun=true;
 }
 
-    @Override
-    public boolean onKey(View view, int i, KeyEvent keyEvent) {
-//        if (keyEvent.getAction() == KeyEvent.ACTION_DOWN){
-//            etAns.setTextColor(Color.BLACK);
-//            etAns.requestFocus();
-//            switch (keyEvent.getKeyCode()) {
-//                case KeyEvent.KEYCODE_ENTER:
-//                    // TODO make keyboard static, prevent it from hiding
-//                    etAns.setSelected(true);
-//                    if (isValid(etAns.getText().toString())) {
-//                        url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
-//                        new MyTask(this).execute();
-//                    } else {
-//                        Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
-//                        t.setGravity(Gravity.CENTER, 0, 0);
-//                        t.show();
-//                        etAns.setTextColor(Color.RED);
-//                    }
-//                    break;
-//            }
-//    }
-//        etAns.requestFocus();
-        return false;
-    }
-
     public Boolean isValid(String s)
     {
-        Log.d(TAG,"checking is valid, isexist:"+usedWords.containsValue(s));
+        Log.d(TAG, "isValid: word "+s);
         if(!s.isEmpty()) {
             ArrayList<String> list = usedWords.get(s.charAt(0));
             if (list != null)
                 if (list.contains(s))
                     return false;
         }
-        return s.matches("[a-zA-Z]+")&&!s.isEmpty()&&!s.contains(" ")&&s.length()<=45&&s.length()>1;
+        Log.d(TAG, "isValid: regex"+s.matches("[a-zA-Z]+"));
+        Log.d(TAG, "isValid: spaces"+!s.contains(" "));
+        Log.d(TAG, "isValid: length"+(s.length()<=45&&s.length()>1)+"len "+s.length());
+        return s.matches("[a-zA-Z]+")&&(!s.contains(" "))&&(s.length()<=45&&s.length()>1);
     }
 
     public void InitDictionary()
     {
-        //Get the text file
-//        File file = new File("assets/", "raw/Nouns.txt");
-//        try {
-//            FileInputStream fis = new FileInputStream(file);
-//            DataInputStream in = new DataInputStream(fis);
-//            BufferedReader br = new BufferedReader(new InputStreamReader(in));
-//            String strLine;
-//            while ((strLine = br.readLine()) != null) {
-//                ArrayList<String> list=AIDictionary.get(strLine.charAt(0));
-//                if (list != null) {
-//                    list.add(strLine);
-//                }
-//                usedWords.put(strLine.charAt(0),list);
-//            }
-//            br.close();
-//            in.close();
-//            fis.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(
@@ -486,10 +545,12 @@ public void startCountDown()
                 ArrayList<String> list=AIDictionary.get(mLine.charAt(0));
                 if(list==null) {
                     list=new ArrayList<>();
+                    if(!mLine.contains("-"))
                     list.add(mLine);
                 }
                 else{
-                    list.add(mLine);
+                    if(!mLine.contains("-"))
+                        list.add(mLine);
                 }
                 AIDictionary.put(mLine.charAt(0),list);
             }
@@ -505,6 +566,102 @@ public void startCountDown()
             }
         }
     }
+
+    private void CheckWord()
+    {
+        if(Mode[1].equals(MODE_SOLO)||(Mode[1].equals(MODE_AI)&&!AIsTurn))
+        FinalWord=etAns.getText().toString().toLowerCase();
+        if (isValid(FinalWord)) {
+            Log.d(TAG, "CheckWord: valid word");
+            url = WIKI_API + etAns.getText().toString().toLowerCase() + JSON_ADDER;
+            etAns.setTextColor(Color.GREEN);
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    new MyTask(GameActivity.this).execute();
+                }
+            }, 500);
+        } else {
+            Log.d(TAG, "CheckWord: invalid word");
+            Toast t = Toast.makeText(GameActivity.this, getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+            t.setGravity(Gravity.CENTER, 0, 0);
+            t.show();
+            etAns.setTextColor(Color.RED);
+        }
+    }
+
+    public void AIPlay()
+    {
+        AIsTurn=true;
+        mHandler = new Handler();
+        setCharacterDelay(300);
+        characterAdder=new Runnable() {
+            @Override
+            public void run() {
+                etAns.setText(mText.subSequence(0, mIndex++));
+                Log.d(TAG, "run: etAns "+etAns.getText().toString()+" | mIndex: "+mIndex+" | mText: "+mText);
+                if(mIndex <= mText.length()) {
+                    mHandler.postDelayed(characterAdder, mDelay);
+                }
+                else {
+                    etAns.setText(mText);
+                    CheckWord();}
+            }
+        };
+        new Runnable(){
+
+            @Override
+            public void run() {
+                Log.d(TAG, "CheckWord: finalword- "+FinalWord);
+                ArrayList<String> words=AIDictionary.get(FinalWord.charAt(FinalWord.length()-1));
+                if(words==null)
+                    Log.d(TAG, "run: words null");
+                Random random=new Random();
+                final String aiword=words.get(random.nextInt(words.size()-1));
+                Log.d(TAG,"aiword: "+aiword);
+                animateText(aiword);
+                FinalWord=aiword;
+                etAns.setEnabled(false);
+            }
+        }.run();
+    }
+
+    public void animateText(CharSequence text) {
+        mText = text.subSequence(0,1).toString().toUpperCase()+text.subSequence(1,text.length());
+        mIndex = 0;
+
+        etAns.setText("");
+        mHandler.removeCallbacks(characterAdder);
+        mHandler.postDelayed(characterAdder, mDelay);
+    }
+
+    public void setCharacterDelay(long millis) {
+        mDelay = millis;
+    }
+
+    private void InitBitmaps()
+    {
+        profiles.add(sp.getString("ImageURL","https://image.flaticon.com/icons/svg/875/875010.svg"));
+        names.add(sp.getString("profName","You"));
+
+        if(Mode[0].equals(MODE_OFFLINE)&&Mode[1].equals(MODE_AI))
+        {
+            Log.d(TAG,"AI detected");
+            profiles.add("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_vuywhucFjrkIUnQehKzEnVhsEUSBzN_8H4AFVx7WcH4I8zvpiA");
+            names.add("AI");
+        }
+        InitRecyclerView();
+    }
+
+    private void InitRecyclerView()
+    {
+        RecyclerView recyclerView=findViewById(R.id.recycler_view);
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(profiles,names,this);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
+    }
+
     public void createDialog()
     {
         String msg="";
@@ -544,14 +701,14 @@ public void startCountDown()
         }
         @Override
         protected Void doInBackground(Void... params) {
-            try {
-                GameActivity activity=activityReference.get();
-                if (activity == null || activity.isFinishing()) return null;
-                activity.jsonString = getJsonFromServer(activity.url);
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+//            try {
+//                GameActivity activity=activityReference.get();
+//                if (activity == null || activity.isFinishing()) return null;
+//                //activity.jsonString = getJsonFromServer(activity.url);
+//            } catch (IOException e) {
+//                // TODO Auto-generated catch block
+//                e.printStackTrace();
+//            }
             return null;
         }
 
@@ -561,6 +718,7 @@ public void startCountDown()
             GameActivity activity=activityReference.get();
             if (activity == null || activity.isFinishing()) return;
             Message msg = new Message();
+            Log.d(TAG, "onPostExecute: "+activity.FinalWord);
             msg.arg1 = activity.CODE_SEND;
             msg.obj = activity.FinalWord;
 //            if (!activity.jsonString.contains("-1")) {
@@ -577,18 +735,15 @@ public void startCountDown()
             if (list != null) {
                 if (list.contains(word))
                 {
-                    Log.d(TAG, "onPostExecute: "+activity.AIDictionary.get('n').contains("nag"));
                     activity.handler.sendMessage(msg);
                     return;
                 }
 
             }
-            else {
-                Toast t = Toast.makeText(activity.getApplicationContext(), activity.getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
-                t.setGravity(Gravity.CENTER, 0, 0);
-                t.show();
-                activity.etAns.setTextColor(Color.RED);
-            }
+            Toast t = Toast.makeText(activity.getApplicationContext(), activity.getResources().getString(R.string.ERROR_MESSAGE_1), Toast.LENGTH_SHORT);
+            t.setGravity(Gravity.CENTER, 0, 0);
+            t.show();
+            activity.etAns.setTextColor(Color.RED);
 
         }
 
