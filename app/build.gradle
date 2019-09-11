@@ -11,7 +11,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         packagingOptions {
-            pickFirst  'META-INF/*'
+            pickFirst 'META-INF/*'
         }
     }
     buildTypes {
@@ -36,9 +36,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 
 
-
-
-
     //Add Library
     implementation 'de.hdodenhof:circleimageview:2.2.0'
     implementation 'com.marcouberti.autofitbutton:android-auto-fit-button:0.1.1@aar'
@@ -46,6 +43,7 @@ dependencies {
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     implementation 'com.jackandphantom.android:circularimageview:1.2.0'
     implementation 'org.apache.commons:commons-lang3:3.6'
+    implementation 'com.android.volley:dc-volley:1.1.0'
 
 
 }

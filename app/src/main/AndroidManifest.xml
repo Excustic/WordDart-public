@@ -15,10 +15,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         tools:ignore="GoogleAppIndexingWarning">
-
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+        <activity android:name=".WaitLobby"></activity>
         <activity
             android:name=".GameActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait" />
         <activity android:name=".PlayMenu" />
         <activity
             android:name=".SettingsActivity"
