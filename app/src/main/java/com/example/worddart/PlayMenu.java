@@ -1,21 +1,28 @@
 package com.example.worddart;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.preference.PreferenceManager;
 
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.NetworkResponse;
@@ -28,6 +35,7 @@ import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.bumptech.glide.load.engine.Resource;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,10 +57,12 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
     ImageButton ibTimed,ibElimination;
     Intent intent;
     String[] Mode;
-    TextView tvOnline,tvOffline;
+    TextView tvOnline,tvOffline,tvTimed,tvElimination;
     final String DatabaseURL="https://word-dart.herokuapp.com";
     SharedPreferences sp;
     private RequestQueue queue;
+    int gameMode,dialogMode;
+    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +71,8 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         sp= PreferenceManager.getDefaultSharedPreferences(this);
         tvOffline=(TextView)findViewById(R.id.Offline);
         tvOnline=(TextView)findViewById(R.id.multi);
+        gameMode=-1; // 0 - timed, 1 - elimination
+        dialogMode=-1; //0 - createdialog(), 1 - createlobbydialog()
         intent=new Intent();
         Mode=new String[3];
         intent.setClass(this, GameActivity.class);
@@ -82,15 +94,32 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
     {
         case R.id.btn0:
             //QuickLobby();
+            Mode[0]=getResources().getString(R.string.ONLINE_MODE);
             break;
         case R.id.btn1:
             //FindLobby();
+            Mode[0]=getResources().getString(R.string.ONLINE_MODE);
             break;
         case R.id.btn2:
-            String data=getAvailable();
-            if(data==null)
-                CreateLobby();
-            else ConnectLobby(data);
+            Mode[0]=getResources().getString(R.string.ONLINE_MODE);
+            getAvailable();
+            handler=new Handler(new Handler.Callback() {
+                @Override
+                public boolean handleMessage(@NonNull Message message) {
+                    if (message.arg1 == 1){
+                    if(message.obj!=null)
+                        Log.d("getAvailable", "onClick: data - "+message.obj.toString());
+                    dialogMode=1;
+                    if(message.obj==null)
+                        CreateLobby();
+                    else ConnectLobby(message.obj.toString());
+
+                    }
+                    return true;
+                }
+            });
+
+
             break;
         case R.id.btn3:
             Mode[0]=getResources().getString(R.string.OFFLINE_MODE);
@@ -103,16 +132,32 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             createDialog();
             break;
         case R.id.ibTimed:
-            d.dismiss();
-            Mode[2]=getResources().getString(R.string.GAMEMODE_TIMED);;
+            Mode[2]=getResources().getString(R.string.GAMEMODE_TIMED);
             intent.putExtra("MODE",Mode);
-            startActivity(intent);
+            if(dialogMode==0) {
+                startActivity(intent);
+                d.dismiss();
+            }
+            else
+            {
+                gameMode=0;
+                tvElimination.setTextColor(Color.BLACK);
+                tvTimed.setTextColor(ContextCompat.getColor(this,R.color.colorPrimary));
+            }
             break;
         case R.id.ibElimination:
-            d.dismiss();
             Mode[2]=getResources().getString(R.string.GAMEMODE_ELIMINATION);
             intent.putExtra("MODE",Mode);
-            startActivity(intent);
+            if(dialogMode==0) {
+                startActivity(intent);
+                d.dismiss();
+            }
+            else
+            {
+                gameMode=1;
+                tvElimination.setTextColor(ContextCompat.getColor(this,R.color.colorPrimary));
+                tvTimed.setTextColor(Color.BLACK);
+            }
             break;
 
     }
@@ -151,8 +196,48 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         d.show();
 
     }
+    public void createLobbyDialog(final String lobby_id)
+    {
+        final Dialog dialog= new Dialog(this);
+        dialog.setContentView(R.layout.createlobbydialog);
+        dialog.setTitle("Lobby Settings");
+        dialog.setCancelable(false);
+        final EditText etPIN=(EditText)dialog.findViewById(R.id.etPIN);
+        ibTimed=(ImageButton)dialog.findViewById(R.id.ibTimed);
+        ibElimination=(ImageButton)dialog.findViewById(R.id.ibElimination);
+        Button btCreate=(Button)dialog.findViewById(R.id.btCreate);
+        ibTimed.setOnClickListener(this);
+        ibElimination.setOnClickListener(this);
+        tvTimed=dialog.findViewById(R.id.tvTimed);
+        tvElimination=dialog.findViewById(R.id.tvElimination);
+        btCreate.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(gameMode!=-1&&(etPIN.getText().toString().length()==4||etPIN.getText().toString().length()==0)) {
+                    int pin;
+                    if(etPIN.getText().toString().length()==0)
+                        pin=-1;
+                    else pin= Integer.parseInt(etPIN.getText().toString());
+                    updateSettings(lobby_id,pin,gameMode);
+                    dialog.dismiss();
+                    intent.putExtra("lobbyID",lobby_id);
+                    intent.setClass(PlayMenu.this,WaitLobby.class);
+                    startActivity(intent);
+                }
+                else{
+                    if(etPIN.getText().toString().length()!=4&&etPIN.getText().toString().length()!=0)
+                        Toast.makeText(PlayMenu.this,"Pin code has to be 4 or 0 (no code) digits long",Toast.LENGTH_LONG).show();
+                    if(gameMode==-1)
+                        Toast.makeText(PlayMenu.this,"Choose a game mode",Toast.LENGTH_SHORT).show();
+                    Log.d("debuggo", "onClick: bad settings - pin: "+etPIN.getText().toString()+", gameMode: "+gameMode);
+                }
+            }
+        });
+        dialog.show();
+
+    }
     // TODO make a helper class that deals with all of these database-centred functions - pack it up nicely
-    public String getAvailable()
+    public void getAvailable()
     {
         final String url = DatabaseURL+"/api/lobbies/getAvailable";
         final String[] obj = {null};
@@ -163,8 +248,15 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     @Override
                     public void onResponse(JSONObject response) {
                         // display response
-                        Log.d("Response", response.toString());
-                        obj[0] =response.toString();
+                        Log.d("Response", "getAvailable: "+response.toString());
+                        obj[0] =response.toString().substring(response.toString().indexOf("_id")+6,response.toString().indexOf("title")-3);
+                        Log.d("Response", "onResponse: obj[0]: "+obj[0]);
+                        if(handler!=null) {
+                            Message msg=new Message();
+                            msg.arg1=1;
+                            msg.obj=obj[0];
+                            handler.sendMessage(msg);
+                        }
                     }
                 },
                 new Response.ErrorListener()
@@ -177,18 +269,67 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                 }
         );
         queue.add(getRequest);
-        return obj[0];
     }
-    public void ConnectLobby(String lobby_id)
+    public void updateSettings(String lobby_id,int PIN,int gameMode)
     {
         String url=DatabaseURL;
-        String body;
+        try {
+            RequestQueue requestQueue = Volley.newRequestQueue(this);
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("PINCODE",PIN);
+            String mode = (gameMode==0) ? "timed" : "elimination";
+            final String mRequestBody = jsonBody.toString();
+            url+="/api/lobbies/update?lobbyID="+lobby_id;
+            StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    Log.i("LOG_RESPONSE", response);
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("LOG_RESPONSE", error.toString());
+                }
+            }) {
+                @Override
+                public String getBodyContentType() {
+                    return "application/json; charset=utf-8";
+                }
+
+                @Override
+                public byte[] getBody() throws AuthFailureError {
+                    try {
+                        return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
+                    } catch (UnsupportedEncodingException uee) {
+                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
+                        return null;
+                    }
+                }
+
+                @Override
+                protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                    String responseString = "";
+                    if (response != null) {
+                        responseString = String.valueOf(response.statusCode);
+                    }
+                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                }
+            };
+
+            requestQueue.add(stringRequest);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    public void ConnectLobby(final String lobby_id)
+    {
+        String url=DatabaseURL;
         if(lobby_id!=null)
         {
                 String tokenid=sp.getString("TokenID",null);
                 Log.d("lobbyID", "CreateLobby: id - "+lobby_id);
                 url += "/api/lobbies/connect?lobbyID="+lobby_id+"&userID="+tokenid;
-                StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                final StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>()
                         {
                             @Override
@@ -214,7 +355,24 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     }
                 };
                 queue.add(postRequest);
+                RequestQueue.RequestFinishedListener listener =
+                    new RequestQueue.RequestFinishedListener()
+                    { @Override public void onRequestFinished(Request request)
+                    {
+                        if(request.equals(postRequest))
+                        {
+                            if(request.hasHadResponseDelivered())
+                                intent.setClass(PlayMenu.this,WaitLobby.class);
+                                if(dialogMode==-1) {
+                                    startActivity(intent);
+                                }
+                                else if(dialogMode==1)
+                                    createLobbyDialog(lobby_id);
 
+                        }
+                    }
+                    };
+                queue.addRequestFinishedListener(listener);
         }
     }
     public void CreateLobby()
@@ -227,6 +385,8 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             jsonBody.put("isAvailable", true);
             jsonBody.put("playerCount",0);
             jsonBody.put("playerArr",new JSONArray());
+            jsonBody.put("PINCODE",-1);
+            jsonBody.put("gameMode","");
             jsonBody.put("currentWord","");
             final String mRequestBody = jsonBody.toString();
             url+="/api/lobbies/insert";
@@ -270,6 +430,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                         }
                         tokenid = tokenid.substring(tokenid.indexOf("_id") + 6, tokenid.indexOf("title") - 3);
                         Log.d("debuggo", "token: " + tokenid);
+
                         ConnectLobby(tokenid);
                     }
                     return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
