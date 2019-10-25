@@ -8,10 +8,13 @@ public class UserPreview {
 
     private Bitmap profImage;
     private String name;
-    public UserPreview(Bitmap c, String name)
+    private String id;
+
+    public UserPreview(Bitmap c, String name,String id)
     {
         this.profImage=c;
         this.name=name;
+        this.id=id;
     }
     public Bitmap getProfImage() {
         return profImage;
@@ -29,4 +32,11 @@ public class UserPreview {
         this.name = name;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 }

@@ -40,6 +40,7 @@ import com.bumptech.glide.load.engine.Resource;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -63,6 +64,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
     private RequestQueue queue;
     int gameMode,dialogMode;
     Handler handler;
+    private static String TAG="PlayMenu";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,8 +185,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
 
     public void createDialog()
     {
-
-
+        dialogMode=0;
         d= new Dialog(this);
         d.setContentView(R.layout.offlinedialog);
         d.setTitle("Select game mode");
@@ -220,6 +221,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     else pin= Integer.parseInt(etPIN.getText().toString());
                     updateSettings(lobby_id,pin,gameMode);
                     dialog.dismiss();
+                    Log.d(TAG, "1444onClick: lobbyid - "+lobby_id);
                     intent.putExtra("lobbyID",lobby_id);
                     intent.setClass(PlayMenu.this,WaitLobby.class);
                     startActivity(intent);
@@ -229,7 +231,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                         Toast.makeText(PlayMenu.this,"Pin code has to be 4 or 0 (no code) digits long",Toast.LENGTH_LONG).show();
                     if(gameMode==-1)
                         Toast.makeText(PlayMenu.this,"Choose a game mode",Toast.LENGTH_SHORT).show();
-                    Log.d("debuggo", "onClick: bad settings - pin: "+etPIN.getText().toString()+", gameMode: "+gameMode);
+                    Log.d(TAG, "onClick: bad settings - pin: "+etPIN.getText().toString()+", gameMode: "+gameMode);
                 }
             }
         });
@@ -241,16 +243,16 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
     {
         final String url = DatabaseURL+"/api/lobbies/getAvailable";
         final String[] obj = {null};
-// prepare the Request
+        // prepare the Request
         JsonObjectRequest getRequest = new JsonObjectRequest(Request.Method.GET, url, (String) null,
                 new Response.Listener<JSONObject>()
                 {
                     @Override
                     public void onResponse(JSONObject response) {
                         // display response
-                        Log.d("Response", "getAvailable: "+response.toString());
+                        Log.d(TAG+" Response", "getAvailable: "+response.toString());
                         obj[0] =response.toString().substring(response.toString().indexOf("_id")+6,response.toString().indexOf("title")-3);
-                        Log.d("Response", "onResponse: obj[0]: "+obj[0]);
+                        Log.d(TAG+" Response", "onResponse: obj[0]: "+obj[0]);
                         if(handler!=null) {
                             Message msg=new Message();
                             msg.arg1=1;
@@ -263,7 +265,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                 {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("Error.Response",error.toString());
+                        Log.d(TAG+" : Error.Response",error.toString());
 
                     }
                 }
@@ -283,12 +285,12 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                 @Override
                 public void onResponse(String response) {
-                    Log.i("LOG_RESPONSE", response);
+                    Log.i(TAG+" LOG_RESPONSE", response);
                 }
             }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    Log.e("LOG_RESPONSE", error.toString());
+                    Log.e(TAG+" LOG_RESPONSE", error.toString());
                 }
             }) {
                 @Override
@@ -301,7 +303,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     try {
                         return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
                     } catch (UnsupportedEncodingException uee) {
-                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
+                        VolleyLog.wtf(TAG+" Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
                         return null;
                     }
                 }
@@ -335,7 +337,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                             @Override
                             public void onResponse(String response) {
                                 // response
-                                Log.d("Response", response);
+                                Log.d(TAG+" Response", response);
                             }
                         },
                         new Response.ErrorListener()
@@ -343,7 +345,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                             @Override
                             public void onErrorResponse(VolleyError error) {
                                 // error
-                                Log.d("Error.Response", error.toString());
+                                Log.d(TAG+" Error.Response", error.toString());
                             }
                         }
                 ) {
@@ -393,12 +395,12 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                 @Override
                 public void onResponse(String response) {
-                    Log.i("LOG_RESPONSE", response);
+                    Log.i(TAG+" LOG_RESPONSE", response);
                 }
             }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    Log.e("LOG_RESPONSE", error.toString());
+                    Log.e(TAG+" LOG_RESPONSE", error.toString());
                 }
             }) {
                 @Override
@@ -411,7 +413,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     try {
                         return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
                     } catch (UnsupportedEncodingException uee) {
-                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
+                        VolleyLog.wtf(TAG+" Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
                         return null;
                     }
                 }
@@ -429,7 +431,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                             e.printStackTrace();
                         }
                         tokenid = tokenid.substring(tokenid.indexOf("_id") + 6, tokenid.indexOf("title") - 3);
-                        Log.d("debuggo", "token: " + tokenid);
+                        Log.d(TAG, "token: " + tokenid);
 
                         ConnectLobby(tokenid);
                     }

@@ -1,13 +1,21 @@
 package com.example.worddart;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -23,6 +31,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
@@ -37,13 +46,20 @@ import com.google.android.gms.tasks.Task;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, View.OnTouchListener {
     private static final int RC_SIGN_IN = 9000;
+    private static final int RESULT_OK=200;
     private static final String TAG = "STATUS_MAIN";
     final String DatabaseURL="https://word-dart.herokuapp.com";
     SignInButton btnGoogle;
@@ -92,9 +108,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ).apply(RequestOptions.circleCropTransform()).into(profile);
 
         queue = Volley.newRequestQueue(this);
-        if (sp.getString("TokenID", null)==null)
+        Log.d(TAG, "onCreate: token-"+(sp.getString("TokenID",null)==null)+" !userExist"+(!userExist()));
+        if (sp.getString("TokenID", null)==null// || !userExist()
+                 ) {
             createUser();
-            Log.d(TAG,"no user found, creating new one");
+            Log.d(TAG, "no user found, creating new one");
+        }
     }
 
     @Override
@@ -158,6 +177,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             handleSignInResult(task);
         }
+        if (resultCode == RESULT_OK)
+        {
+            Uri imageUri = data.getData();
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     private void signIn() {
@@ -195,7 +224,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void createUser() {
-        final String mRequestBody = "{\"userType\":\"anonymous\",\"fullName\":\"Random_Crab\",\"emailAddress\":\"\"}";
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("userType", "anonymous");
+            obj.put("fullName", "Random_Crab");
+            obj.put("emailAddress", "");
+//            Bitmap b = BitmapFactory.decodeResource(getResources(), R.drawable.proficon_crab);
+//            ByteBuffer buffer = ByteBuffer.allocate(b.getByteCount());
+//            b.copyPixelsToBuffer(buffer);
+            obj.put("profImage", "https://i.ibb.co/Wfvshgz/crab.png");
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        final String mRequestBody = obj.toString();
 
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, DatabaseURL+"/api/users/insert", (JSONArray) null, new Response.Listener<JSONArray>() {
             @Override
@@ -250,7 +293,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void updateUserInfo(GoogleSignInAccount account)
     {
-        final String mRequestBody = "{\"userType\":\"google\",\"fullName\":\""+account.getDisplayName()+"\",\"emailAddress\":\""+account.getEmail()+"\"}";
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("userType", "google");
+            obj.put("fullName", account.getDisplayName());
+            obj.put("emailAddress", account.getEmail());
+//            Bitmap b = null;
+//            new GetImageFromURL(b).execute(account.getPhotoUrl().toString()).get();
+//            ByteBuffer buffer = ByteBuffer.allocate(b.getByteCount());
+//            b.copyPixelsToBuffer(buffer);
+            if(account.getPhotoUrl()!=null)
+            obj.put("imageURL", account.getPhotoUrl().toString());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        //final String mRequestBody = "{\"userType\":\"google\",\"fullName\":\""+account.getDisplayName()+"\",\"emailAddress\":\""+account.getEmail()+"\"}";
+        final String mRequestBody = obj.toString();
         String tokenid=sp.getString("TokenID",null);
         StringRequest stringRequest = new StringRequest(Request.Method.POST, DatabaseURL+"/api/users/update?userID="+tokenid, new Response.Listener<String>() {
             @Override
@@ -300,4 +360,64 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         };
         queue.add(stringRequest);
     }
+    public Boolean userExist()
+    {
+        final String url=DatabaseURL+"/api/users/get/"+sp.getString("TokenID", null);
+        // prepare the Request
+        final String[] obj = {null};
+        final Boolean[] resultReady={false};
+        final JsonObjectRequest getRequest = new JsonObjectRequest(Request.Method.GET, url , (String) null,
+                new Response.Listener<JSONObject>()
+                {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        // display response
+                        Log.d(TAG+" Response", "getAvailable: "+response.toString());
+                        obj[0] =response.toString();
+                        Log.d(TAG+" Response", "onResponse: obj[0]: "+obj[0]);
+                        resultReady[0]=true;
+                    }
+                },
+                new Response.ErrorListener()
+                {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d(TAG+"Error.Res",error.toString());
+                    }
+                }
+        );
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                //Write whatever to want to do after delay specified (1 sec)
+                queue.add(getRequest);
+
+            }
+        }, 1000);
+        //if(resultReady[0]) build asynctask
+        Log.d(TAG, "userExist: obj[0]-"+(obj[0]!=null));
+        return obj[0]!=null;
+    }
+//    public class GetImageFromURL extends AsyncTask<String,Void,Bitmap>{
+//        private Bitmap bitmap;
+//        public GetImageFromURL(Bitmap bitmap)
+//        {
+//            this.bitmap=bitmap;
+//        }
+//        @Override
+//        protected Bitmap doInBackground(String... strings) {
+//            String url=strings[0];
+//            bitmap=null;
+//            try {
+//                InputStream is=new java.net.URL(url).openStream();
+//                bitmap=BitmapFactory.decodeStream(is);
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            return bitmap;
+//        }
+//    }
 }

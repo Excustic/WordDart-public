@@ -57,6 +57,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="@font/montserrat_regular"
         android:gravity="center"
+        android:id="@+id/numOfPlayers"
         android:text="Number of players: 0/8"
         app:layout_constraintBottom_toTopOf="@+id/guideline31"
         app:layout_constraintEnd_toStartOf="@+id/guideline28"
