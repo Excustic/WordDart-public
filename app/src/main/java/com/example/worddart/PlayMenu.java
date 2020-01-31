@@ -74,7 +74,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         tvOffline=(TextView)findViewById(R.id.Offline);
         tvOnline=(TextView)findViewById(R.id.multi);
         gameMode=-1; // 0 - timed, 1 - elimination
-        dialogMode=-1; //0 - createdialog(), 1 - createlobbydialog()
+        dialogMode=-1; //0 - createdialog(), 1 - createlobbydialog(), 2 - joinLobbydialog()
         intent=new Intent();
         Mode=new String[3];
         intent.setClass(this, GameActivity.class);
@@ -88,6 +88,11 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         TextViewCompat.setAutoSizeTextTypeWithDefaults(tvOnline,TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM);
         TextViewCompat.setAutoSizeTextTypeWithDefaults(tvOffline,TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM);
         queue = Volley.newRequestQueue(this);
+        Intent intent = new Intent();
+        intent.setClass(this,UserActivator.class);
+        intent.putExtra("URL",DatabaseURL+"/api/users/activate?userID="+sp.getString("TokenID",""));
+        startService(intent);
+        Log.d(TAG, "onCreate: startService called");
     }
 
     @Override
@@ -101,6 +106,8 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         case R.id.btn1:
             //FindLobby();
             Mode[0]=getResources().getString(R.string.ONLINE_MODE);
+            dialogMode=2;
+            joinLobbyDialog();
             break;
         case R.id.btn2:
             Mode[0]=getResources().getString(R.string.ONLINE_MODE);
@@ -114,7 +121,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                     dialogMode=1;
                     if(message.obj==null)
                         CreateLobby();
-                    else ConnectLobby(message.obj.toString());
+                    else ConnectLobby(message.obj.toString(),null,"-1");
 
                     }
                     return true;
@@ -238,6 +245,25 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         dialog.show();
 
     }
+
+    public void joinLobbyDialog(){
+        final Dialog dialog= new Dialog(this);
+        dialog.setContentView(R.layout.joinlobbydialog);
+        dialog.setTitle("Join Lobby");
+        dialog.setCancelable(false);
+        final EditText etLobbyNum = (EditText)dialog.findViewById(R.id.etLobbyNum);
+        final EditText etPIN = (EditText)dialog.findViewById(R.id.etPIN2);
+        Button btJoin = (Button)dialog.findViewById(R.id.btJoin);
+        btJoin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(etLobbyNum.getText().toString().length()>0)
+                    ConnectLobby(null,"Lobby_"+etLobbyNum.getText().toString(),etPIN.getText().toString());
+                else Toast.makeText(PlayMenu.this,"Enter Lobby Number",Toast.LENGTH_SHORT).show();
+            }
+        });
+        dialog.show();
+    }
     // TODO make a helper class that deals with all of these database-centred functions - pack it up nicely
     public void getAvailable()
     {
@@ -272,6 +298,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
         );
         queue.add(getRequest);
     }
+
     public void updateSettings(String lobby_id,int PIN,int gameMode)
     {
         String url=DatabaseURL;
@@ -323,14 +350,23 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
             e.printStackTrace();
         }
     }
-    public void ConnectLobby(final String lobby_id)
+    public void ConnectLobby(final String lobby_id,final String lobby_title,final String PINCODE)
     {
         String url=DatabaseURL;
-        if(lobby_id!=null)
+        if(lobby_id!=null && lobby_title!=null)
         {
-                String tokenid=sp.getString("TokenID",null);
-                Log.d("lobbyID", "CreateLobby: id - "+lobby_id);
-                url += "/api/lobbies/connect?lobbyID="+lobby_id+"&userID="+tokenid;
+            if(lobby_id!=null) {
+                String tokenid = sp.getString("TokenID", null);
+                Log.d("lobbyID", "CreateLobby: id - " + lobby_id);
+                url += "/api/lobbies/connect?lobbyID=" + lobby_id + "&userID=" + tokenid;
+            }
+            else if (lobby_title!=null)
+            {
+                String tokenid = sp.getString("TokenID", null);
+                Log.d("lobbyID", "CreateLobby: title - " + lobby_title);
+                url += "/api/lobbies/connect?lobbyTitle=" + lobby_title + "&userID=" + tokenid;
+            }
+            url+="&PINCODE="+PINCODE;
                 final StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>()
                         {
@@ -433,7 +469,7 @@ public class PlayMenu extends AppCompatActivity implements View.OnClickListener,
                         tokenid = tokenid.substring(tokenid.indexOf("_id") + 6, tokenid.indexOf("title") - 3);
                         Log.d(TAG, "token: " + tokenid);
 
-                        ConnectLobby(tokenid);
+                        ConnectLobby(tokenid,null,"-1");
                     }
                     return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
                 }

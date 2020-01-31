@@ -31,14 +31,6 @@ ImageView circle;
     }
     public void updateUI()
     {
-//            try {
-//                FirebaseUser f= (FirebaseUser) readObject(this, "fbU");
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//                SaveUser();
-//            } catch (ClassNotFoundException e) {
-//                e.printStackTrace();
-//            }
         new Handler().postDelayed(new Runnable(){
             @Override
             public void run() {
@@ -49,7 +41,5 @@ ImageView circle;
                 finish();
             }
         }, SPLASH_TIME);
-        // GoogleSign.setVisibility(View.INVISIBLE);
-        // AnonSign.setVisibility(View.INVISIBLE);
     }
 }

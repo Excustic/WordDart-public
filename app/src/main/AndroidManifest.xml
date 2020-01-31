@@ -15,8 +15,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         tools:ignore="GoogleAppIndexingWarning">
-        <uses-library android:name="org.apache.http.legacy" android:required="false" />
-        <activity android:name=".WaitLobby"></activity>
+        <service
+            android:name="com.example.worddart.UserActivator"
+            android:enabled="true"
+            android:exported="false"></service>
+
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+
+        <activity android:name=".WaitLobby" />
         <activity
             android:name=".GameActivity"
             android:screenOrientation="portrait" />
