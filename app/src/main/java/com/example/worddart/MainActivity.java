@@ -15,6 +15,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -36,6 +37,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.BitmapImageViewTarget;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -51,7 +53,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.ref.WeakReference;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
@@ -77,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         intent = new Intent();
+        Log.d(TAG, "onCreate: ");
 
         profile = (CircleImageView) findViewById(R.id.circleImageView);
         dispName = (TextView) findViewById(R.id.dispName);
@@ -104,8 +110,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         updateUI(account);
 
-        Glide.with(this).load(ContextCompat.getDrawable(this, R.drawable.proficon_crab)
-        ).apply(RequestOptions.circleCropTransform()).into(profile);
+       // Glide.with(this).load(ContextCompat.getDrawable(this, R.drawable.proficon_crab)
+        //).apply(RequestOptions.circleCropTransform()).into(profile);
 
         queue = Volley.newRequestQueue(this);
         Log.d(TAG, "onCreate: token-"+(sp.getString("TokenID",null)==null)+" !userExist"+(!userExist()));
@@ -216,10 +222,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 editor.putString("ImageURL", account.getPhotoUrl().toString());
             editor.putString("profName", account.getDisplayName());
             editor.apply();
-            profile.setImageURI(account.getPhotoUrl());
+            final Uri photo = account.getPhotoUrl();
+            new GetImageFromURL(profile, this).execute(photo);
             profile.setBorderColor(Color.WHITE);
             profile.setBorderWidth(3);
             dispName.setText(account.getDisplayName());
+            btnGoogle.setVisibility(View.INVISIBLE);
         }
     }
 
@@ -312,17 +320,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //final String mRequestBody = "{\"userType\":\"google\",\"fullName\":\""+account.getDisplayName()+"\",\"emailAddress\":\""+account.getEmail()+"\"}";
         final String mRequestBody = obj.toString();
         String tokenid=sp.getString("TokenID",null);
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, DatabaseURL+"/api/users/update?userID="+tokenid, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                Log.i("LOG_RESPONSE", response);
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e("LOG_RESPONSE", error.toString());
-            }
-        }) {
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, DatabaseURL+"/api/users/update?userID="+tokenid, response -> Log.i("LOG_RESPONSE", response), error -> Log.e("LOG_RESPONSE", error.toString())) {
             @Override
             public String getBodyContentType() {
                 return "application/json; charset=utf-8";
@@ -372,7 +370,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void onResponse(JSONObject response) {
                         // display response
-                        Log.d(TAG+" Response", "getAvailable: "+response.toString());
+                        Log.d(TAG+" Response", "userExist: "+response.toString());
                         obj[0] =response.toString();
                         Log.d(TAG+" Response", "onResponse: obj[0]: "+obj[0]);
                         resultReady[0]=true;
@@ -420,4 +418,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //            return bitmap;
 //        }
 //    }
+
+   public static class GetImageFromURL extends AsyncTask<Uri,Void,Void>{
+        private CircleImageView c;
+        private WeakReference<MainActivity> activity;
+        public GetImageFromURL(CircleImageView c, MainActivity activity)
+        {
+            this.c=c;
+            this.activity= new WeakReference<>(activity);
+        }
+
+       @Override
+       protected Void doInBackground(Uri... uris) {
+            Uri url = uris[0];
+            try{
+                final Bitmap b = Glide.with(activity.get())
+                        .asBitmap()
+                        .load(url)
+                        .submit().get();
+                activity.get().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        c.setImageBitmap(b);
+                    }
+                });
+                                    }
+            catch(Exception e){
+                e.printStackTrace();
+           }
+           return null;
+       }
+   }
 }

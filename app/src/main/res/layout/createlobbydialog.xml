@@ -19,6 +19,7 @@
         android:layout_gravity="center"
         android:hint="Enter 4 digits"
         android:inputType="number"
+        android:maxLength="4"
         android:textSize="22sp"/>
     <TextView
         android:layout_width="wrap_content"

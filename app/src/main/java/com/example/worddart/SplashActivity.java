@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract;
+import android.util.Log;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
@@ -20,7 +21,7 @@ ImageView circle;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         circle=(ImageView)findViewById(R.id.Circle);
-
+        Log.d("SPLASH", "onCreate: ");
     }
     protected void onStart()
     {

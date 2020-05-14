@@ -20,13 +20,18 @@ import android.widget.TextView;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.NetworkError;
+import com.android.volley.NetworkResponse;
 import com.android.volley.NoConnectionError;
 import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.Response;
 import com.android.volley.ServerError;
 import com.android.volley.TimeoutError;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
@@ -37,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
@@ -53,8 +59,9 @@ private RequestQueue queue;
 private ArrayList<UserPreview> userPreviews;
 private RecyclerView recyclerView;
 private String userID;
+TextView tvPnum, lobbyTitle;
 private SharedPreferences sp;
-TextView tvPnum;
+private String Mode;
 private Handler handler;
 private UserPreviewAdapter userPreviewAdapter;
 private ScheduledExecutorService task;
@@ -65,6 +72,9 @@ private ScheduledExecutorService task;
         setContentView(R.layout.activity_wait_lobby);
         intent=getIntent();
         lobby_Title=intent.getStringExtra("lobbyTitle");
+        lobbyTitle=findViewById(R.id.lobbyTitle);
+        lobbyTitle.setText("Lobby No. "+lobby_Title.split("_")[1]);
+        Mode = intent.getStringExtra("MODE");
         Log.d(TAG, "onCreate: lobbyTitle - "+lobby_Title);
         sp= PreferenceManager.getDefaultSharedPreferences(this);
         userID=sp.getString("TokenID","");
@@ -103,6 +113,7 @@ private ScheduledExecutorService task;
                     try {
                         assert body != null;
                         JSONArray jsonArr = body.getJSONArray("playerArr");
+                        String gameMode = body.getString("gameMode");
                         String[] playerArr=new String[jsonArr.length()];
                         for(int i = 0; i < jsonArr.length(); i++){
                             playerArr[i]=jsonArr.get(i).toString();
@@ -122,10 +133,13 @@ private ScheduledExecutorService task;
                                 getUser(DatabaseURL + "/api/users/get/" + p);
                                 Log.d(TAG, "handleMessage: missing user " + p);
                             }
+
+                            if(obd)
                         }
                     } catch (JSONException e) {
                         Log.d(TAG,e.toString());
                     }
+
                     break;
             }
             return true;
@@ -133,12 +147,51 @@ private ScheduledExecutorService task;
         InitRecyclerView();
         btnStart=findViewById(R.id.btnStartGame);
         btnStart.setOnClickListener(view -> {
-            intent.setClass(WaitLobby.this,GameActivity.class);
-            startActivity(intent);
+            startGame();
+
         });
         queue = Volley.newRequestQueue(this);
 
         runUI();
+
+    }
+    private void startGame() {
+        //get current lobby body
+        final String url = DatabaseURL + "/api/lobbies/update/" + lobby_Title;
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("isAvailable", false);
+            jsonBody.put("gameMode", "");
+            final String mRequestBody = jsonBody.toString();
+            StringRequest stringRequest = new StringRequest(Request.Method.POST, url, response -> Log.i(TAG + " LOG_RESPONSE", response), error -> Log.e(TAG + " LOG_RESPONSE", error.toString())) {
+                @Override
+                public String getBodyContentType() {
+                    return "application/json; charset=utf-8";
+                }
+
+                @Override
+                public byte[] getBody() {
+                    return mRequestBody.getBytes(StandardCharsets.UTF_8);
+                }
+
+                @Override
+                protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                    String responseString;
+                    if (response != null) {
+                        responseString = String.valueOf(response.statusCode);
+                        if(responseString.equals("200"))
+                            intent.setClass(WaitLobby.this, GameActivity.class);
+                            startActivity(intent);
+                        return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                    }
+                    return Response.error(new VolleyError("response null"));
+                }
+            };
+        }
+         catch (JSONException e) {
+            e.printStackTrace();
+        }
+
 
     }
 
